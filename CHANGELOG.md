@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.1.1](https://github.com/Zuoqiu-Yingyi/siyuan-plugin-jupyter-client/compare/v0.1.0...v0.1.1) (2023-09-05)
+
+
+### Miscellaneous
+
+* **jupyter-client:** release v0.1.1 ([64dd0e7](https://github.com/Zuoqiu-Yingyi/siyuan-plugin-jupyter-client/commit/64dd0e7b1faa7a7dd314585826d3531950846ce3))
+
+
+### Features
+
+* **webview:** 添加使用原生窗口编辑器打开思源块的功能 | Add the function of opening SiYuan block with native window editor. ([a87155e](https://github.com/Zuoqiu-Yingyi/siyuan-plugin-jupyter-client/commit/a87155ec7745562f6752a1443f024d34aa57e8df))
+
+
+### Bug Fixes
+
+* **jupyter-client:** 修复无法在浏览器中使用的问题 | Fix the issue that cannot be used in the browser. ([d4a27c8](https://github.com/Zuoqiu-Yingyi/siyuan-plugin-jupyter-client/commit/d4a27c8de7824124f3666ffdd73c9ee3ae79946d))
+
+
+### Code Refactoring
+
+* **jupyter-client:** 裁剪 Jupyter 服务管理类 `ServiceManager` | Trim Jupyter service management class `ServiceManager`. ([d904911](https://github.com/Zuoqiu-Yingyi/siyuan-plugin-jupyter-client/commit/d904911a6c6a0d7ad22bfbd2c67b7aab0c3ebe99))
+
 ## 0.1.0 (2023-09-03)
 
 
