@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.1.2](https://github.com/Zuoqiu-Yingyi/siyuan-plugin-jupyter-client/compare/v0.1.1...v0.1.2) (2023-09-08)
+
+
+### Miscellaneous
+
+* **jupyter-client:** release v0.1.2 ([2097d86](https://github.com/Zuoqiu-Yingyi/siyuan-plugin-jupyter-client/commit/2097d86d204ade9d2d9e4fae07bc23fe8b268fcc))
+
+
+### Documentation
+
+* 更新文档中的徽标 | Update the badge in the document. ([1688597](https://github.com/Zuoqiu-Yingyi/siyuan-plugin-jupyter-client/commit/1688597ade3e9e3e441280e6e7318e8952efac80))
+
+
+### Features
+
+* **jupyter-client:** 为代码单元格添加运行按钮 | Add run button to code cell. ([491d9b7](https://github.com/Zuoqiu-Yingyi/siyuan-plugin-jupyter-client/commit/491d9b7327a6c0091b2c95b9cab5a7d20ba6d08c))
+* **jupyter-client:** 优化数据解析 | Optimize data parsing. ([49502f5](https://github.com/Zuoqiu-Yingyi/siyuan-plugin-jupyter-client/commit/49502f5a1b80d73206b8980833a5ee4ec139ac97))
+* **jupyter-client:** 添加 `Jupyter` 按钮 | Add `Jupyter` button. ([e587267](https://github.com/Zuoqiu-Yingyi/siyuan-plugin-jupyter-client/commit/e587267dec7589680f8947d97bfb0c85b98e12be))
+* **jupyter-client:** 移除导入的 `prompt` 块属性 | Remove imported `prompt` block attributes. ([340cb92](https://github.com/Zuoqiu-Yingyi/siyuan-plugin-jupyter-client/commit/340cb92be028623184b57a70794e0581914d0345))
+
 ## [0.1.1](https://github.com/Zuoqiu-Yingyi/siyuan-plugin-jupyter-client/compare/v0.1.1...v0.1.1) (2023-09-05)
 
 
