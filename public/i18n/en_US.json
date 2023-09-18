@@ -44,6 +44,9 @@
         },
         "title": "Jupyter"
     },
+    "inspectDock": {
+        "title": "Jupyter Contextual Help"
+    },
     "menu": {
         "import": {
             "accelerator": "*.ipynb",
@@ -197,6 +200,10 @@
                 "enable": {
                     "description": "Enable to attempt to establish connection with Jupyter service",
                     "title": "Enable Jupyter client"
+                },
+                "delay": {
+                    "description": "The delay time when calling the Jupyter kernel language service to get context help and code suggestions.<br/>Unit: milliseconds",
+                    "title": "Language service call delay"
                 },
                 "title": "Global"
             },

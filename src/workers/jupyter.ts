@@ -39,6 +39,15 @@ import {
 } from "@/jupyter/parse";
 
 import type {
+    KernelSpec,
+    Kernel,
+    Session,
+    KernelMessage,
+} from "@jupyterlab/services";
+import type { IHeader } from "@jupyterlab/services/lib/kernel/messages";
+import type { IShellFuture } from "@jupyterlab/services/lib/kernel/kernel";
+
+import type {
     IConfig,
     IJupyterParserOptions,
 } from "@/types/config";
@@ -46,18 +55,11 @@ import type {
     IFunction,
     THandlersWrapper,
 } from "@workspace/utils/worker/bridge";
-import type {
-    KernelSpec,
-    Kernel,
-    Session,
-    KernelMessage,
-} from "@jupyterlab/services";
 import type { BlockID } from "@workspace/types/siyuan";
+
 import type { PluginHandlers } from "@/index";
-import type { IHeader } from "@jupyterlab/services/lib/kernel/messages";
 import type { IExecuteContext } from "@/types/jupyter";
 import type { I18N } from "@/utils/i18n";
-import type { IShellFuture } from "@jupyterlab/services/lib/kernel/kernel";
 
 const config: IConfig = DEFAULT_CONFIG;
 const logger = new Logger(`${self.name}-worker:${CONSTANTS.JUPYTER_WORKER_FILE_NAME}`);
@@ -302,6 +304,35 @@ async function updateBlockAttrs(context: IExecuteContext): Promise<void> {
     });
 }
 
+/**
+ * 插入新块
+ * @param context 执行上下文
+ * @param nextID 下一个块 ID
+ * @param data 块内容文本 (kramdown)
+ * @param dataType 块内容类型
+ */
+async function insertBlock(
+    context: IExecuteContext,
+    nextID: string,
+    data: string,
+    dataType: "markdown" | "dom" = "markdown",
+): Promise<void> {
+    if (context.output.reply) {
+        await client.appendBlock({
+            parentID: context.output.id,
+            data,
+            dataType,
+        });
+    }
+    else {
+        await client.insertBlock({
+            nextID,
+            data,
+            dataType,
+        });
+    }
+}
+
 export type TExtendedParams = [
     Omit<Parameters<Kernel.IKernelConnection["requestExecute"]>[0], "code">?,
     Parameters<Kernel.IKernelConnection["requestExecute"]>[1]?,
@@ -343,6 +374,7 @@ async function executeCode(
             output: {
                 new: true,
                 id: id(),
+                reply: false,
                 attrs: {},
                 stream: {
                     attrs: {
@@ -576,11 +608,11 @@ async function handleStreamMessage(
 
         context.output.stream.initialized = true;
         context.output.hrs.stream.used = true;
-        await client.insertBlock({
-            nextID: context.output.hrs.stream.id,
-            data: kramdowns.join("\n"),
-            dataType: "markdown",
-        });
+        await insertBlock(
+            context,
+            context.output.hrs.stream.id,
+            kramdowns.join("\n"),
+        );
     }
 }
 
@@ -617,11 +649,11 @@ async function handleErrorMessage(
         ].join("\n");
 
     context.output.hrs.error.used = true;
-    await client.insertBlock({
-        nextID: context.output.hrs.error.id,
-        data: kramdown,
-        dataType: "markdown",
-    });
+    await insertBlock(
+        context,
+        context.output.hrs.error.id,
+        kramdown,
+    );
 }
 
 /**
@@ -681,11 +713,11 @@ async function handleDisplayDataMessage(
     }
 
     context.output.hrs.display_data.used = true;
-    await client.insertBlock({
-        nextID: context.output.hrs.display_data.id,
-        data: kramdown,
-        dataType: "markdown",
-    });
+    await insertBlock(
+        context,
+        context.output.hrs.display_data.id,
+        kramdown,
+    );
 }
 
 /**
@@ -743,11 +775,11 @@ async function handleExecuteResultMessage(
 
     context.output.hrs.execute_result.used = true;
     for (const kramdown of kramdowns) {
-        await client.insertBlock({
-            nextID: context.output.hrs.execute_result.id,
-            data: kramdown,
-            dataType: "markdown",
-        });
+        await insertBlock(
+            context,
+            context.output.hrs.execute_result.id,
+            kramdown,
+        );
     }
 }
 
@@ -782,11 +814,11 @@ async function handleStdinMessage(
                 : code;
 
             context.output.hrs.stream.used = true;
-            await client.insertBlock({
-                nextID: context.output.hrs.stream.id,
-                data: kramdown,
-                dataType: "markdown",
-            });
+            await insertBlock(
+                context,
+                context.output.hrs.stream.id,
+                kramdown,
+            );
 
             future.sendInputReply(
                 {
@@ -812,6 +844,8 @@ async function handleExecuteReplyMessage(
     message: KernelMessage.IExecuteReplyMsg,
     context: IExecuteContext,
 ): Promise<void> {
+    context.output.reply = true;
+
     /* 块运行结束时间 */
     context.code.attrs[CONSTANTS.attrs.code.execute_reply] = message.header.date;
 
@@ -851,9 +885,9 @@ async function handleExecuteReplyMessage(
                     }
                 }
 
-                context.output.hrs.execute_result.used = true;
+                context.output.hrs.execute_reply.used = true;
                 await client.insertBlock({
-                    nextID: context.output.hrs.execute_result.id,
+                    nextID: context.output.hrs.execute_reply.id,
                     data: [
                         "{{{row",
                         kramdowns.join("\n\n"),
@@ -1253,6 +1287,28 @@ const handlers = {
                 );
             }
             return connection?.model;
+        },
+    },
+    "jupyter.session.kernel.connection.requestComplete": { // 请求自动补全
+        this: self,
+        async func(
+            sessionID: string, // 会话 ID
+            content: KernelMessage.ICompleteRequestMsg["content"], // 请求内容
+        ): Promise<KernelMessage.ICompleteReplyMsg | undefined> {
+            const connection = id_2_session_connection.get(sessionID);
+            const message = await connection?.kernel?.requestComplete(content);
+            return message;
+        },
+    },
+    "jupyter.session.kernel.connection.requestInspect": { // 请求上下文参考
+        this: self,
+        async func(
+            sessionID: string, // 会话 ID
+            content: KernelMessage.IInspectRequestMsg["content"], // 请求内容
+        ): Promise<KernelMessage.IInspectReplyMsg | undefined> {
+            const connection = id_2_session_connection.get(sessionID);
+            const message = await connection?.kernel?.requestInspect(content);
+            return message;
         },
     },
     importIpynb: {

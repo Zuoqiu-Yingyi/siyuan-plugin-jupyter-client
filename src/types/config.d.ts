@@ -55,15 +55,24 @@ export interface IJupyterInput {
     goto: boolean; // 输入请求时是否跳转到对应的代码块
 }
 
+export interface IJupyterInspect {
+    detail_level: KernelMessage.IInspectRequestMsg["content"]["detail_level"];
+}
 
-export interface IJupyterImport {
-    parser: IJupyterParserOptions;
+export interface IJupyterComplete {
+}
+
+export interface IJupyterEdit {
+    delay: number; // 上下文帮助/自动补全 延时时间
 }
 
 export interface IJupyter {
     server: IJupyterServer;
     execute: IJupyterExecute;
+    inspect: IJupyterInspect;
+    complete: IJupyterComplete;
     import: IJupyterImport;
+    edit: IJupyterEdit;
 }
 
 export interface IXterm {

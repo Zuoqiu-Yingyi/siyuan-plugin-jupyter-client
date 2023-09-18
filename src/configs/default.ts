@@ -48,12 +48,20 @@ export const DEFAULT_CONFIG: IConfig = {
                 },
             },
         },
+        inspect: {
+            detail_level: 1,
+        },
+        complete: {
+        },
         import: {
             parser: {
                 xterm: false, // ⚙
                 escaped: true, // ⚙
                 cntrl: true, // ⚙
             },
+        },
+        edit: {
+            delay: 125,
         },
     },
     xterm: {
@@ -62,7 +70,7 @@ export const DEFAULT_CONFIG: IConfig = {
             disableStdin: true,
             convertEol: true,
             logLevel: "off",
-            fontFamily: "JetBrainsMono-Regular", // ⚙
+            fontFamily: "", // ⚙
         },
     },
 };
