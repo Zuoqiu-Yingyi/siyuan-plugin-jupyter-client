@@ -26,6 +26,7 @@ import manifest from "~/public/plugin.json";
 import "./index.less";
 
 import icon_jupyter_client from "./assets/symbols/icon-jupyter-client.symbol?raw";
+import icon_jupyter_client_inspect from "./assets/symbols/icon-jupyter-client-inspect.symbol?raw";
 import icon_jupyter_client_text from "./assets/symbols/icon-jupyter-client-text.symbol?raw";
 import icon_jupyter_client_simple from "./assets/symbols/icon-jupyter-client-simple.symbol?raw";
 import icon_jupyter_client_terminal from "./assets/symbols/icon-jupyter-client-terminal.symbol?raw";
@@ -48,6 +49,7 @@ import * as sdk from "@siyuan-community/siyuan-sdk";
 import Item from "@workspace/components/siyuan/menu/Item.svelte"
 import Settings from "./components/Settings.svelte";
 import JupyterDock from "./components/JupyterDock.svelte";
+import JupyterInspectDock from "./components/JupyterInspectDock.svelte";
 import SessionManager from "./components/SessionManager.svelte";
 import XtermOutputElement from "./components/XtermOutputElement";
 import { asyncPrompt } from "@workspace/components/siyuan/dialog/prompt";
@@ -65,6 +67,8 @@ import {
     isSiyuanBlock,
     isSiyuanDocument,
     isSiyuanDocumentTitle,
+    type ICodeBlockCursorPosition,
+    getCodeBlockCursorPosition,
 } from "@workspace/utils/siyuan/dom";
 import { Logger } from "@workspace/utils/logger";
 import { fn__code } from "@workspace/utils/siyuan/text/span";
@@ -73,11 +77,18 @@ import { WorkerBridgeMaster } from "@workspace/utils/worker/bridge/master";
 import { sleep } from "@workspace/utils/misc/sleep";
 import { Counter } from "@workspace/utils/misc/iterator";
 import { toUint8Array } from "@workspace/utils/misc/base64";
+import { encode } from "@workspace/utils/misc/base64";
+import { select } from "@workspace/utils/dom/selection";
+import { replaceRangeWithText } from "@workspace/utils/dom/range";
 import uuid from "@workspace/utils/misc/uuid";
 
 import CONSTANTS from "./constants";
 import { DEFAULT_SETTINGS } from "./jupyter/settings";
 import { DEFAULT_CONFIG } from "./configs/default";
+import {
+    LIGHT_ICON_MAP,
+    DARK_ICON_MAP,
+} from "./jupyter/icon";
 import {
     blockDOM2codeCells,
     buildNewCodeCell,
@@ -102,11 +113,19 @@ import type {
     IClickBlockIconEvent,
     IClickEditorContentEvent,
     IClickEditorTitleIconEvent,
+    IDestroyProtyleEvent,
     ILoadedProtyleEvent,
 } from "@workspace/types/siyuan/events";
 import type { THandlersWrapper } from "@workspace/utils/worker/bridge";
 import type { WorkerHandlers } from "./workers/jupyter";
 import type { ComponentEvents } from "svelte";
+import type xterm from "xterm";
+import type { IProtyle } from "siyuan/types/protyle";
+import { deshake } from "@workspace/utils/misc/deshake";
+import { isLightTheme } from "@workspace/utils/siyuan/theme";
+import { isMatchedKeyboardEvent } from "@workspace/utils/shortcut/match";
+import type { IKeyboardStatus } from "@workspace/utils/shortcut";
+import { escapeHTML } from "@workspace/utils/misc/html";
 
 declare var globalThis: ISiyuanGlobal;
 export type PluginHandlers = THandlersWrapper<JupyterClientPlugin["handlers"]>;
@@ -118,6 +137,22 @@ export type TMenuContext = IBlockMenuContext | {
 
 export default class JupyterClientPlugin extends siyuan.Plugin {
     static readonly GLOBAL_CONFIG_NAME = "global-config";
+    static readonly EDIT_KEYBOARD_EVENT_STATUS_INSPECT: IKeyboardStatus = {
+        type: "keyup",
+        altKey: false,
+        ctrlKey: false,
+        metaKey: false,
+        shiftKey: false,
+        key: (key: string) => /^(\S|Tab|Delete|Backspace|ArrowUp|ArrowDown|ArrowLeft|ArrowRight|Home|End)$/.test(key),
+    } as const; // 触发上下文帮助的事件
+    static readonly EDIT_KEYBOARD_EVENT_STATUS_COMPLATE: IKeyboardStatus = {
+        type: "keyup",
+        altKey: false,
+        ctrlKey: false,
+        metaKey: false,
+        shiftKey: false,
+        key: (key: string) => /^(\S|Tab|Delete|Backspace)$/.test(key),
+    } as const; // 触发自动补全的事件
 
     declare public readonly i18n: I18N;
 
@@ -130,13 +165,26 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
     public config: IConfig = DEFAULT_CONFIG;
     protected worker?: InstanceType<typeof Worker>; // worker
     public bridge?: InstanceType<typeof WorkerBridgeMaster>; // worker 桥
+    protected complating: boolean = false; // 菜单已打开
+
+    protected editEventHandler!: ReturnType<typeof deshake<(
+        protyle: IProtyle, // 编辑器
+        inspect: boolean, // 上下文帮助
+        complate: boolean, // 自动补全
+    ) => Promise<void>>>;
+    protected readonly protyles = new WeakMap<IProtyle, Parameters<HTMLElement["addEventListener"]>>(); // 已监听的编辑器对象
 
     protected jupyterDock!: {
-        // editor: InstanceType<typeof Editor>,
         dock: ReturnType<siyuan.Plugin["addDock"]>,
         model?: siyuan.IDockModel,
         component?: InstanceType<typeof JupyterDock>,
     }; // Jupyter 管理面板
+
+    protected jupyterInspectDock!: {
+        dock: ReturnType<siyuan.Plugin["addDock"]>,
+        model?: siyuan.IDockModel,
+        component?: InstanceType<typeof JupyterInspectDock>,
+    }; // Jupyter 上下文帮助面板
 
     public readonly doc2session = new Map<string, Session.IModel>(); // 文档 ID 到会话的映射
     public readonly doc2info = new Map<string, sdk.types.kernel.api.block.getDocInfo.IData>(); // 文档 ID 到文档信息的映射
@@ -148,6 +196,7 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
     public readonly kernelName2logoObjectURL = new Map<string, string>(); // 内核名称 -> object URL
     public readonly kernelName2language = new Map<string, string>(); // 内核名称 -> 内核语言名称
     public readonly kernelName2displayName = new Map<string, string>(); // 内核名称 -> 内核显示名称
+    public readonly xtermElements = new Set<InstanceType<ReturnType<typeof XtermOutputElement>>>(); // xterm 组件集合
     public readonly counter = Counter();
     public readonly username = `siyuan-${siyuan.getBackend()}-${siyuan.getFrontend()}`; // 用户名
     public readonly clientId = globalThis.Lute.NewNodeID(); // 客户端 ID
@@ -200,6 +249,9 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
                 XtermOutputElementWrap.TAG_NAME,
                 XtermOutputElementWrap,
             );
+
+        /* 初始化编辑事件处理函数 */
+        this.updateEditEventHandler();
     }
 
     onload(): void {
@@ -208,6 +260,7 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
         /* 注册图标 */
         this.addIcons([
             icon_jupyter_client,
+            icon_jupyter_client_inspect,
             icon_jupyter_client_text,
             icon_jupyter_client_simple,
             icon_jupyter_client_terminal,
@@ -264,6 +317,40 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
                 },
             }),
         };
+        this.jupyterInspectDock = {
+            dock: this.addDock({
+                config: {
+                    position: "BottomLeft",
+                    size: { width: 256, height: 0 },
+                    icon: "icon-jupyter-client-inspect",
+                    title: this.i18n.inspectDock.title,
+                    show: true,
+                },
+                data: {
+                    stream: "",
+                },
+                type: "-inspect-dock",
+                init() {
+                    // plugin.logger.debug(this);
+
+                    this.element.classList.add("fn__flex-column");
+                    const dock = new JupyterInspectDock({
+                        target: this.element,
+                        props: {
+                            plugin,
+                            ...this.data,
+                        },
+                    });
+                    plugin.jupyterInspectDock.model = this;
+                    plugin.jupyterInspectDock.component = dock;
+                },
+                destroy() {
+                    plugin.jupyterInspectDock.component?.$destroy();
+                    delete plugin.jupyterInspectDock.component;
+                    delete plugin.jupyterInspectDock.model;
+                },
+            }),
+        };
 
         /**
          * 注册快捷键命令
@@ -305,6 +392,8 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
                     await this.gotoBlock(next_cell.id, false);
                 }
                 else { // 不存在下一个代码单元格
+                    if (blocks.cells.length == 0) return; // 仅在当前为代码单元格时才会插入
+
                     /* 插入新代码单元格 */
                     const new_cell = await this.insertNewCodeCell(blocks);
 
@@ -373,6 +462,7 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
                 this.eventBus.on("click-blockicon", this.blockMenuEventListener);
                 this.eventBus.on("click-editorcontent", this.clickEditorContentEventListener);
                 this.eventBus.on("loaded-protyle", this.loadedProtyleEventListener);
+                this.eventBus.off("destroy-protyle", this.destroyProtyleEventListener);
             });
     }
 
@@ -384,17 +474,33 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
         this.eventBus.off("click-blockicon", this.blockMenuEventListener);
         this.eventBus.off("click-editorcontent", this.clickEditorContentEventListener);
         this.eventBus.off("loaded-protyle", this.loadedProtyleEventListener);
+        this.eventBus.off("destroy-protyle", this.destroyProtyleEventListener);
+
+        for (const objectURL of this.kernelName2logoObjectURL.values()) {
+            URL.revokeObjectURL(objectURL);
+        }
+
+        this.doc2session.clear();
+        this.doc2info.clear();
+        this.session2docs.clear();
+        this.kernelName2logoObjectURL.clear();
+        this.kernelName2language.clear();
+        this.kernelName2displayName.clear();
 
         if (this.worker) {
             this.bridge
                 ?.call<WorkerHandlers["unload"]>("unload")
                 .then(() => {
                     this.bridge?.terminate();
+                    this.bridge = undefined;
+
                     this.worker?.terminate();
+                    this.worker = undefined;
                 });
         }
         else {
             this.bridge?.terminate();
+            this.bridge = undefined;
         }
     }
 
@@ -442,6 +548,8 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
         if (config && config !== this.config) {
             this.config = config;
         }
+        this.updateXtermElement();
+        this.updateEditEventHandler();
         await this.updateWorkerConfig(restart);
         await this.saveData(JupyterClientPlugin.GLOBAL_CONFIG_NAME, this.config);
     }
@@ -539,6 +647,56 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
         if (restart) {
             await this.bridge?.call<WorkerHandlers["restart"]>("restart");
         }
+    }
+
+    /* 更新 xterm 组件配置 */
+    public updateXtermElement(options: xterm.ITerminalOptions = this.config.xterm.options): void {
+        for (const element of this.xtermElements) {
+            if (element.terminal) {
+                for (const [key, value] of Object.entries(options)) {
+                    // @ts-ignore
+                    if (element.terminal.options[key] !== value) {
+                        // @ts-ignore
+                        element.terminal.options[key] = value;
+                    }
+                }
+            }
+        }
+    }
+
+    /* 更新编辑事件处理函数 */
+    public updateEditEventHandler(delay: number = this.config.jupyter.edit.delay): void {
+        this.editEventHandler = deshake(async (
+            protyle: IProtyle,
+            inspect: boolean,
+            complate: boolean,
+        ) => {
+            if (inspect || complate) {
+                const session = this.doc2session.get(protyle.block.rootID!);
+                if (session) { // 当前文档已连接会话
+                    const block = getCurrentBlock();
+                    if (isCodeCell(block)) { // 当前块是代码单元格
+                        const position = getCodeBlockCursorPosition();
+                        if (position) { // 成功获取光标位置
+                            const promises: Promise<any>[] = [];
+                            if (inspect) {
+                                promises.push(this.requestInspect( // 更新上下文帮助
+                                    session.id,
+                                    position,
+                                ));
+                            }
+                            if (complate) {
+                                promises.push(this.requestComplete( // 自动补全
+                                    session.id,
+                                    position,
+                                ));
+                            }
+                            await Promise.allSettled(promises);
+                        }
+                    }
+                }
+            }
+        }, delay);
     }
 
     /**
@@ -1250,6 +1408,249 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
     }
 
     /**
+     * 请求上下文帮助
+     * @param sessionID 会话 ID
+     * @param position 光标位置
+     * @returns 是否成功获取
+     */
+    protected async requestInspect(
+        sessionID: string,
+        position: ICodeBlockCursorPosition,
+    ): Promise<boolean> {
+        const message = await this.bridge?.call<WorkerHandlers["jupyter.session.kernel.connection.requestInspect"]>(
+            "jupyter.session.kernel.connection.requestInspect",
+            sessionID,
+            {
+                code: position.code,
+                cursor_pos: position.offset,
+                detail_level: this.config.jupyter.inspect.detail_level,
+            },
+        );
+        // this.logger.debug(message);
+
+        if (message) {
+            switch (message.content.status) {
+                case "ok":
+                    if (message.content.found) { // 查询到上下文帮助信息
+                        const text = message.content.data["text/plain"];
+                        if (text !== undefined) {
+                            const stream = encode(
+                                Array.isArray(text)
+                                    ? text.join()
+                                    : text as string,
+                                true,
+                            );
+                            this.jupyterInspectDock.component?.$set({ stream });
+                            return true;
+                        }
+                        else {
+                            this.logger.warn(message);
+                        }
+                    }
+                    break;
+                case "abort":
+                    this.logger.info(message);
+                case "error":
+                    this.logger.warn(message);
+                    break;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 请求上下文自动补全
+     * @param sessionID 会话 ID
+     * @param position 光标位置
+     * @returns 是否成功获取
+     */
+    protected async requestComplete(
+        sessionID: string,
+        position: ICodeBlockCursorPosition,
+    ): Promise<boolean> {
+        const payload = {
+            code: position.code,
+            cursor_pos: position.offset,
+        };
+        const message = await this.bridge?.call<WorkerHandlers["jupyter.session.kernel.connection.requestComplete"]>(
+            "jupyter.session.kernel.connection.requestComplete",
+            sessionID,
+            payload,
+        );
+        // this.logger.debugs(payload, message);
+
+        if (message) {
+            switch (message.content.status) {
+                case "ok": {
+                    /* 使用菜单实现自动补全 */
+                    const content = message.content;
+                    const menu_items: siyuan.IMenuItemOption[] = [];
+                    const icon_map = isLightTheme()
+                        ? LIGHT_ICON_MAP
+                        : DARK_ICON_MAP;
+
+                    const advices = content.metadata["_jupyter_types_experimental"] as {
+                        start: number,
+                        end: number,
+                        text: string,
+                        type: string,
+                        signature: string,
+                    }[] | void;
+                    if (Array.isArray(advices)
+                        && advices.length > 0
+                    ) {
+                        (advices).reduce((previous, current) => {
+                            if (previous.type !== current.type) {
+                                menu_items.push({ type: "separator" });
+                            }
+
+                            const click = () => this.complete(
+                                position,
+                                current.start,
+                                current.end,
+                                current.text,
+                            );
+                            const item: siyuan.IMenuItemOption = {
+                                label: current.text,
+                                accelerator: fn__code(current.type),
+                                // accelerator: fn__code(current.signature),
+                                click,
+                                submenu: current.signature
+                                    ? [{
+                                        // type: "readonly",
+                                        iconHTML: "", // 移除图标
+                                        label: fn__code(escapeHTML(current.signature)),
+                                        click,
+                                    }]
+                                    : undefined,
+                            };
+                            const icon = icon_map.get(current.type);
+                            if (icon) {
+                                item.iconHTML = icon;
+                            }
+                            else {
+                                switch (current.type) {
+                                    case "magic":
+                                        // item.icon = "icon-jupyter-client-kernel";
+                                        item.icon = "icon-jupyter-client-simple";
+                                        break;
+
+                                    case "path":
+                                        switch (true) {
+                                            case current.text.endsWith("/"):
+                                                item.iconHTML = icon_map.get("folder");
+                                                break;
+
+                                            default:
+                                                item.iconHTML = icon_map.get("file");
+                                                break;
+                                        }
+                                        break;
+
+                                    default:
+                                        item.icon = undefined;
+                                        break;
+                                }
+                            }
+                            menu_items.push(item);
+                            return current;
+                        }, advices[0]);
+                    }
+                    else {
+                        menu_items.push(...content.matches.map(label => ({
+                            label,
+                            click: () => this.complete(
+                                position,
+                                content.cursor_start,
+                                content.cursor_end,
+                                label,
+                            ),
+                        } as siyuan.IMenuItemOption)))
+                    }
+
+                    if (menu_items.length > 0) {
+                        const range = position.current;
+                        const options: { x: number, y: number } = (() => {
+                            var rect: DOMRect | void;
+
+                            rect = range.getBoundingClientRect();
+                            if (rect.x > 0 && rect.y > 0) return { x: rect.right, y: rect.bottom };
+
+                            rect = range.commonAncestorContainer instanceof Element
+                                ? range.commonAncestorContainer.getBoundingClientRect()
+                                : undefined;
+                            if (rect && rect.x > 0 && rect.y > 0) return { x: rect.right, y: rect.bottom };
+
+                            rect = range.commonAncestorContainer.parentElement instanceof HTMLSpanElement
+                                ? range.commonAncestorContainer.parentElement?.getBoundingClientRect()
+                                : undefined;
+                            if (rect && rect.x > 0 && rect.y > 0) return { x: rect.right, y: rect.bottom };
+
+                            rect = position.container.getBoundingClientRect();
+                            return { x: rect.left, y: rect.bottom };
+                        })();
+
+                        const menu = new siyuan.Menu(message.header.msg_id, () => {
+                            this.complating = false;
+                            if (menu.menu.element.lastElementChild instanceof HTMLElement) {
+                                menu.menu.element.lastElementChild.style.maxHeight = "";
+                            }
+                        });
+
+                        // menu_items[0].current = true; // 仅高亮显示, 无法自动获取焦点
+                        menu_items.forEach(item => menu.addItem(item));
+                        // menu_items.forEach(menu.addItem); // 无效
+
+                        this.complating = true;
+                        menu.open(options);
+
+                        /* 调整菜单位置 */
+                        const menu_rect = menu.menu.element.getBoundingClientRect();
+                        if (menu_rect.y !== options.y) {
+                            const items_element = menu.menu.element.lastElementChild;
+                            if (items_element instanceof HTMLElement) {
+                                const max_height = globalThis.innerHeight - options.y - 32;
+
+                                items_element.style.maxHeight = `${max_height}px`;
+                                menu.element.style.top = `${options.y}px`;
+                            }
+                        }
+                    }
+
+                    break;
+                }
+                case "abort":
+                    this.logger.info(message);
+                case "error":
+                    this.logger.warn(message);
+                    break;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 补全上下文
+     * @param position 光标位置
+     * @param start 光标起始偏移量
+     * @param end 光标末尾偏移量
+     * @param text 补全文本
+     */
+    protected complete(
+        position: ICodeBlockCursorPosition,
+        start: number,
+        end: number,
+        text: string,
+    ): void {
+        select(position.container, { start, end });
+        const range = globalThis.getSelection()?.getRangeAt(0);
+        if (range && range.toString() !== text) {
+            replaceRangeWithText(range, text);
+        }
+        select(position.container, { start: start + text.length });
+    }
+
+    /**
      * 请求运行代码块
      * @param code 代码
      * @param codeID 代码块 ID
@@ -1513,6 +1914,51 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
         });
     }
 
+    /**
+     * 切换监听器
+     * @param protyle 编辑器
+     * @param enable 是否启用编辑事件监听
+     */
+    protected toggleEditEventListener(
+        protyle: IProtyle,
+        enable: boolean,
+    ): void {
+
+        if (enable) {
+            if (!this.protyles.has(protyle)) { // 未加入监听的编辑器
+                const listener = [
+                    "keyup",
+                    e => this.editEventListener(e as KeyboardEvent, protyle),
+                    {
+                        capture: true,
+                    },
+                ] as Parameters<HTMLElement["addEventListener"]>;
+                this.protyles.set(protyle, listener);
+                protyle.wysiwyg?.element?.addEventListener(...listener);
+            }
+        }
+        else {
+            const listener = this.protyles.get(protyle);
+            if (listener) { // 已加入监听的编辑器
+                protyle.wysiwyg?.element?.removeEventListener(...listener);
+            }
+        }
+    }
+
+    /* 编辑事件监听 */
+    protected readonly editEventListener = (
+        e: KeyboardEvent,
+        protyle: IProtyle,
+    ) => {
+        // this.logger.debugs(e, protyle);
+
+        this.editEventHandler(
+            protyle,
+            isMatchedKeyboardEvent(e, JupyterClientPlugin.EDIT_KEYBOARD_EVENT_STATUS_INSPECT),
+            isMatchedKeyboardEvent(e, JupyterClientPlugin.EDIT_KEYBOARD_EVENT_STATUS_COMPLATE),
+        );
+    }
+
     /* 块菜单菜单弹出事件监听器 */
     protected readonly blockMenuEventListener = (e: IClickBlockIconEvent | IClickEditorTitleIconEvent) => {
         // this.logger.debug(e);
@@ -1560,17 +2006,34 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
             }
         }
 
+        const session = this.doc2session.get(protyle.block.rootID!) // 当前文档连接的会话
+        if (session) { // 当前文档已连接会话
+            this.toggleEditEventListener(protyle, true); // 启用编辑事件监听
+        }
+        else { // 当前文档未连接会话
+            this.toggleEditEventListener(protyle, false); // 禁用编辑事件监听
+        }
+
         /* 为代码块添加运行按钮 */
         const block_element = getCurrentBlock();
         if (block_element) { // 当前块存在
-            if (block_element.dataset.type === sdk.siyuan.NodeType.NodeCodeBlock) { // 当前块为代码块
-                const session = this.doc2session.get(protyle.block.rootID!); // 当前文档连接的会话
+            if (block_element.dataset.type === sdk.siyuan.NodeType.NodeCodeBlock && block_element.classList.contains("code-block")) { // 当前块为代码块
                 const action_run = block_element.querySelector<HTMLElement>(`.${CONSTANTS.JUPYTER_CODE_CELL_ACTION_RUN_CLASS_NAME}`); // 代码块运行按钮
                 if (session // 当前文档已连接会话
-                    && (block_element.getAttribute(CONSTANTS.attrs.code.type.key) === CONSTANTS.attrs.code.type.value // 代码单元格
+                    && (isCodeCell(block_element) // 代码单元格
                         || block_element.querySelector<HTMLElement>(".protyle-action__language")?.innerText === protyle.background?.ial?.[CONSTANTS.attrs.kernel.language] // 语言与内核语言一致
                     )
                 ) { // 可运行的代码块
+                    /* 请求上下文帮助 */
+                    const position = getCodeBlockCursorPosition();
+                    // this.logger.debug(position);
+                    if (position) {
+                        this.requestInspect(
+                            session.id,
+                            position,
+                        );
+                    }
+
                     if (!action_run) { // 若运行按钮不存在, 添加该按钮
                         const action_last = block_element.querySelector<HTMLElement>(".protyle-icon--last"); // 最后一个按钮
 
@@ -1584,14 +2047,14 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
                             );
                             action.ariaLabel = this.i18n.menu.run.label;
                             action.innerHTML = `<svg><use xlink:href="#iconPlay"></use></svg>`;
-                            action.addEventListener("click", async () => {
+                            action.onclick = async e => {
                                 const cells = blockDOM2codeCells(block_element.outerHTML, false);
                                 await this.requestExecuteCells(
                                     cells,
                                     session,
                                     this.config.jupyter.execute.output.parser,
                                 );
-                            });
+                            };
 
                             action_last.parentElement?.insertBefore(action, action_last);
                         }
@@ -1614,7 +2077,7 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
         const protyle = e.detail;
 
         /* 更新内核状态 */
-        if (!this.doc2session.has(protyle.block.rootID!)) {
+        if (!this.doc2session.has(protyle.block.rootID!)) { // 当前文档未连接会话
             const attrs: Record<string, string> = {};
             if (protyle.background?.ial?.[CONSTANTS.attrs.kernel.connection_status]
                 && protyle.background.ial[CONSTANTS.attrs.kernel.connection_status] !== "disconnected"
@@ -1632,6 +2095,9 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
                     attrs,
                 });
             }
+        }
+        else { // 当前文档已连接会话
+            this.toggleEditEventListener(protyle, true); // 启用编辑事件监听
         }
 
         /* 在面包屑栏右侧添加按钮 */
@@ -1656,7 +2122,7 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
                     button.dataset.type = "jupyter-client-notebook-menu";
                     button.ariaLabel = "Jupyter";
                     button.innerHTML = `<svg><use xlink:href="#icon-jupyter-client-session-notebook"></use></svg>`;
-                    button.addEventListener("click", async e => {
+                    button.onclick = async e => {
                         // this.logger.debug(e);
                         e.preventDefault();
                         e.stopPropagation();
@@ -1678,15 +2144,15 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
                             if (menu_items.length > 0) {
                                 const menu = new this.siyuan.Menu();
                                 menu_items.forEach(item => menu.addItem(item));
-    
+
                                 menu.open({
                                     x: e.clientX,
                                     y: e.clientY,
-                                    // isLeft: true,
+                                    isLeft: true,
                                 });
                             }
                         }
-                    }, true);
+                    };
 
                     exit_focus_element.parentElement!.insertBefore(
                         button,
@@ -1695,6 +2161,14 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
                 }
             }
         }
+    }
+
+    /* 编辑器关闭事件监听器 */
+    protected readonly destroyProtyleEventListener = (e: IDestroyProtyleEvent) => {
+        // this.logger.debug(e);
+
+        const protyle = e.detail.protyle;
+        this.toggleEditEventListener(protyle, false); // 禁用编辑事件监听
     }
 
     /**
