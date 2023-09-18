@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.2.0](https://github.com/Zuoqiu-Yingyi/siyuan-plugin-jupyter-client/compare/v0.1.2...v0.2.0) (2023-09-18)
+
+
+### Miscellaneous
+
+* **jupyter-client:** release v0.2.0 ([93bd42f](https://github.com/Zuoqiu-Yingyi/siyuan-plugin-jupyter-client/commit/93bd42f8c921d9b792325dd345163f7b718eda60))
+
+
+### Features
+
+* **jupyter-client:** 完善设置面板 | Improve settings panel. ([18498c8](https://github.com/Zuoqiu-Yingyi/siyuan-plugin-jupyter-client/commit/18498c86dc91232ff1c6edb0e36942e78d13ddd6))
+* **jupyter-client:** 实现自动补全功能 | Implement auto-completion function. ([e293625](https://github.com/Zuoqiu-Yingyi/siyuan-plugin-jupyter-client/commit/e29362540c1b8d0b5c386467f36b8e7fb12b11fa))
+* **jupyter-client:** 添加上下文帮助面板 | Add context help panel. ([ec70aa1](https://github.com/Zuoqiu-Yingyi/siyuan-plugin-jupyter-client/commit/ec70aa1428b94eb8294096c01fdd5f68dd9c9e41))
+* **jupyter-client:** 添加编辑事件监听器 | Add edit event listener. ([7f08754](https://github.com/Zuoqiu-Yingyi/siyuan-plugin-jupyter-client/commit/7f0875489210cf4de90e2932da83712211f0e2a9))
+
+
+### Bug Fixes
+
+* **jupyter-client:** 兼容输出消息序列顺序不规范的情况 | Compatible with the case where the output message sequence is not standardized. ([5f020b6](https://github.com/Zuoqiu-Yingyi/siyuan-plugin-jupyter-client/commit/5f020b6b5881bcf2321aa51a27b14d9d3b673c4e))
+
+
+### Performance Improvements
+
+* **jupyter-client:** 改进事件监听器 | Improve event listener. ([8c911c4](https://github.com/Zuoqiu-Yingyi/siyuan-plugin-jupyter-client/commit/8c911c40eb5c6e91bb12434356212da6aae51a86))
+* **typewriter:** 优化代码块跟随行滚动功能 | Optimize the function of code block following the line scrolling. ([53f45bb](https://github.com/Zuoqiu-Yingyi/siyuan-plugin-jupyter-client/commit/53f45bb51411306a7b49d3129e723bbab76bca93))
+
 ## [0.1.2](https://github.com/Zuoqiu-Yingyi/siyuan-plugin-jupyter-client/compare/v0.1.1...v0.1.2) (2023-09-08)
 
 
