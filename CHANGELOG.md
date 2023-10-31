@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/Zuoqiu-Yingyi/siyuan-plugin-jupyter-client/compare/v0.2.0...v0.2.1) (2023-10-31)
+
+
+### Miscellaneous
+
+* **jupyter-client:** release v0.2.1 ([cf515c3](https://github.com/Zuoqiu-Yingyi/siyuan-plugin-jupyter-client/commit/cf515c35a46cd9eebb2a0f9b81d098a5df75cf81))
+
 ## [0.2.0](https://github.com/Zuoqiu-Yingyi/siyuan-plugin-jupyter-client/compare/v0.1.2...v0.2.0) (2023-09-18)
 
 
