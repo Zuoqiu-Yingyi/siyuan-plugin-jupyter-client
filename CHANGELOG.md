@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.2](https://github.com/Zuoqiu-Yingyi/siyuan-plugin-jupyter-client/compare/v0.2.1...v0.2.2) (2024-01-23)
+
+
+### Build System
+
+* 提取部分依赖至工作空间 | Extract some dependencies to workspace. ([6bad172](https://github.com/Zuoqiu-Yingyi/siyuan-plugin-jupyter-client/commit/6bad172d1d3a3973247d19beddf0b04a231843a4))
+
+
+### Miscellaneous
+
+* **jupyter-client:** release v0.2.2 ([081d7d5](https://github.com/Zuoqiu-Yingyi/siyuan-plugin-jupyter-client/commit/081d7d52c860ea23584e27cc8ebd197fb9fcfef2))
+
 ## [0.2.1](https://github.com/Zuoqiu-Yingyi/siyuan-plugin-jupyter-client/compare/v0.2.0...v0.2.1) (2023-10-31)
 
 
