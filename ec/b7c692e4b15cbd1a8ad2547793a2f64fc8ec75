@@ -1,0 +1,19 @@
+src/utils/cell.ts
+  s_4a1abc01610f9a::t_8e876f12426551 26,58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.35-trip",
+  "base_commit_sha": "ecb7c692e4b15cbd1a8ad2547793a2f64fc8ec75",
+  "prompts": {},
+  "sessions": {
+    "s_4a1abc01610f9a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f83c1-46cb-77f1-b117-e2f184ceea0d",
+        "model": "gpt-5.5-2026-04-24"
+      },
+      "human_author": "Yingyi / 颖逸 <49649786+Zuoqiu-Yingyi@users.noreply.github.com>"
+    }
+  }
+}
