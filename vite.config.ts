@@ -1,43 +1,44 @@
-/**
- * Copyright (C) 2023 Zuoqiu Yingyi
- * 
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- * 
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+// Copyright (C) 2023 Zuoqiu Yingyi
+// 
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
+// 
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+// 
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import { resolve } from "node:path";
+
+import { svelte } from "@sveltejs/vite-plugin-svelte";
+import { sveltePreprocess } from "svelte-preprocess";
 import {
     defineConfig,
-    type BuildOptions,
+
 } from "vite";
-import { resolve } from "node:path"
-import { svelte } from "@sveltejs/vite-plugin-svelte";
-import { less } from "svelte-preprocess-less";
+
+import type { BuildOptions } from "vite";
 
 // https://vitejs.dev/config/
-export default defineConfig(async env => ({
+export default defineConfig(async (env) => ({
     base: `./`,
     plugins: [
         svelte({
-            preprocess: {
-                style: less(),
-            },
+            preprocess: [
+                sveltePreprocess({
+                    typescript: true,
+                    less: true,
+                }),
+            ],
         }),
     ],
     resolve: {
-        alias: {
-            "~": resolve(__dirname, "./"),
-            "@": resolve(__dirname, "./src"),
-        }
+        tsconfigPaths: true,
     },
     build: {
         minify: true,
@@ -48,7 +49,7 @@ export default defineConfig(async env => ({
                 /^@electron\/.*$/,
             ],
             output: {
-                entryFileNames: chunkInfo => {
+                entryFileNames: (chunkInfo) => {
                     // console.log(chunkInfo);
                     switch (chunkInfo.name) {
                         case "index":
@@ -60,7 +61,7 @@ export default defineConfig(async env => ({
                             return "entries/[name]-[hash].js";
                     }
                 },
-                assetFileNames: assetInfo => {
+                assetFileNames: (assetInfo) => {
                     // console.log(chunkInfo);
                     switch (assetInfo.name) {
                         case "style.css":
@@ -73,12 +74,14 @@ export default defineConfig(async env => ({
                 },
             },
         },
+        // eslint-disable-next-line ts/no-use-before-define
         ...build(env.mode),
     },
 }));
 
 function build(mode: string): BuildOptions {
     switch (mode) {
+        // eslint-disable-next-line default-case-last
         default:
         case "plugin":
             return {
@@ -87,7 +90,7 @@ function build(mode: string): BuildOptions {
                     entry: resolve(__dirname, "src/index.ts"),
                     fileName: "index",
                     formats: ["cjs"],
-                }
+                },
             };
 
         case "workers":
@@ -97,7 +100,7 @@ function build(mode: string): BuildOptions {
                     entry: resolve(__dirname, "src/workers/jupyter.ts"),
                     fileName: "jupyter",
                     formats: ["es"],
-                }
+                },
             };
     }
 }
