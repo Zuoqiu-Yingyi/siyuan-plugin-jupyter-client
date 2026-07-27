@@ -57,15 +57,19 @@
         onconfirm,
     }: IProps = $props();
 
+    // svelte-ignore state_referenced_locally
     const i18n = plugin.i18n;
 
+    // svelte-ignore state_referenced_locally
     let session_new: ISessionModel = $state(plugin.ial2session(docIAL, true)); // 待新建的会话
+    // svelte-ignore state_referenced_locally
     let session: ISessionModel = $state(plugin.ial2session(docIAL, true));
 
     let flag_session_new: boolean = $state(true); // 当前会话是否为新建会话
     let flag_session_connected: boolean = $state(false); // 当前会话是否为已连接的会话
 
     /* 可选的会话列表 */
+    // svelte-ignore state_referenced_locally
     const session_options = plugin.sessions.map((s) => ({
         key: s.id,
         text: s.name,
@@ -74,12 +78,15 @@
     /* 可选的内核列表 */
     const kernel_options: { key: string; text: string }[] = []; // 包含复用内核
     const kernel_options_new: { key: string; text: string }[] = []; // 不包含复用内核
+
     /* 禁用内核 */
     kernel_options.push({
         key: "",
         text: `⏹ ${i18n.settings.sessionSettings.kernel.options.no.text}`,
     });
+
     /* 启动内核 */
+    // svelte-ignore state_referenced_locally
     kernel_options.push(
         ...Array.from(Object.values(plugin.kernelspecs.kernelspecs))
             .filter((k) => k !== undefined)
@@ -89,7 +96,9 @@
             })),
     );
     kernel_options_new.push(...kernel_options);
+
     /* 使用内核 */
+    // svelte-ignore state_referenced_locally
     kernel_options.push(
         ...plugin.sessions
             .filter((s) => s.kernel)
