@@ -2101,8 +2101,8 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
             detail.menu.addItem({
                 submenu,
                 icon: "icon-jupyter-client-simple",
-                label: this.i18n.displayName,
-                accelerator: this.name,
+                label: this.displayName,
+                accelerator: fn__code(this.name),
             });
 
             this.updateDockFocusItem(context.protyle.block.rootID!);
