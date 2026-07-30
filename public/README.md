@@ -12,7 +12,7 @@
 [![GitHub all releases](https://img.shields.io/github/downloads/Zuoqiu-Yingyi/siyuan-plugin-jupyter-client/total?style=flat-square)](https://github.com/Zuoqiu-Yingyi/siyuan-plugin-jupyter-client/releases)
 ---
 
-[简体中文](./README_zh_CN.md) \| English
+[简体中文](./README.zh-CN.md) \| English
 
 ---
 

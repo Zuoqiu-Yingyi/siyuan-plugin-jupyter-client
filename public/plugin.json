@@ -26,18 +26,18 @@
     ],
     "displayName": {
         "default": "Jupyter Client",
-        "zh_CN": "Jupyter 客户端",
-        "zh_CHT": "Jupyter 客戶端"
+        "zh-CN": "Jupyter 客户端",
+        "zh-TW": "Jupyter 客戶端"
     },
     "description": {
         "default": "The plugin can connect to the Jupyter service, run the code block, output and save the run result.",
-        "zh_CN": "该插件可以连接 Jupyter 服务，运行代码块，输出并保存运行结果。",
-        "zh_CHT": "該插件可以連接 Jupyter 服務，運行代碼塊，輸出並保存運行結果。"
+        "zh-CN": "该插件可以连接 Jupyter 服务，运行代码块，输出并保存运行结果。",
+        "zh-TW": "該插件可以連接 Jupyter 服務，運行代碼塊，輸出並保存運行結果。"
     },
     "readme": {
         "default": "README.md",
-        "zh_CN": "README_zh_CN.md",
-        "zh_CHT": "README_zh_CN.md"
+        "zh-CN": "README.zh-CN.md",
+        "zh-TW": "README.zh-CN.md"
     },
     "funding": {
         "openCollective": "",
