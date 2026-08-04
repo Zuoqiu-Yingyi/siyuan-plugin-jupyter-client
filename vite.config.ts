@@ -87,7 +87,7 @@ function build(mode: string): BuildOptions {
             return {
                 emptyOutDir: true,
                 lib: {
-                    entry: resolve(__dirname, "src/index.ts"),
+                    entry: resolve(import.meta.dirname, "src/index.ts"),
                     fileName: "index",
                     formats: ["cjs"],
                 },
@@ -97,7 +97,7 @@ function build(mode: string): BuildOptions {
             return {
                 emptyOutDir: false,
                 lib: {
-                    entry: resolve(__dirname, "src/workers/jupyter.ts"),
+                    entry: resolve(import.meta.dirname, "src/workers/jupyter.ts"),
                     fileName: "jupyter",
                     formats: ["es"],
                 },
