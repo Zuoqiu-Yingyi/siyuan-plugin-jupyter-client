@@ -291,7 +291,7 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
         this.updateEditEventHandler();
     }
 
-    public override onload(): void {
+    public override async onload(): Promise<void> {
         // this.logger.debug(this);
 
         /* 注册图标 */
@@ -490,44 +490,45 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
         });
 
         /* 加载数据 */
-        this.loadData(JupyterClientPlugin.GLOBAL_CONFIG_NAME)
-            .then((config) => {
-                this.config = mergeIgnoreArray(DEFAULT_CONFIG, config || {}) as IConfig;
-            })
-            .catch((error) => this.logger.error(error))
-            .finally(async () => {
-                /* 初始化 channel */
-                this.initBridge();
-                const runing = await this.isWorkerRunning();
+        try {
+            this.config = mergeIgnoreArray(DEFAULT_CONFIG, await this.loadData(JupyterClientPlugin.GLOBAL_CONFIG_NAME) || {}) as IConfig;
+        }
+        catch (error) {
+            this.logger.error(error);
+        }
+        finally {
+            /* 初始化 channel */
+            this.initBridge();
+            const runing = await this.isWorkerRunning();
 
-                if (!runing) { // worker 未正常运行
-                    /* 初始化 worker */
-                    this.initWorker();
+            if (!runing) { // worker 未正常运行
+                /* 初始化 worker */
+                this.initWorker();
 
-                    /* 等待 worker 正常运行 */
-                    while (await this.isWorkerRunning()) {
-                        await sleep(1_000);
-                    }
-
-                    /* 初始化 worker 配置 */
-                    await this.bridge?.call<WorkerHandlers["onload"]>(
-                        "onload",
-                        this.i18n,
-                    );
-                    await this.updateWorkerConfig(true);
-                }
-                else { // worker 已正常运行, 强制刷新 jupyter 资源列表
-                    await this.jupyterForceRefresh();
+                /* 等待 worker 正常运行 */
+                while (await this.isWorkerRunning()) {
+                    await sleep(1_000);
                 }
 
-                /* 注册事件监听器 */
-                this.eventBus.on("click-editortitleicon", this.blockMenuEventListener);
-                this.eventBus.on("click-blockicon", this.blockMenuEventListener);
-                this.eventBus.on("click-editorcontent", this.clickEditorContentEventListener);
-                this.eventBus.on("loaded-protyle-static", this.loadedProtyleEventListener);
-                this.eventBus.on("switch-protyle", this.loadedProtyleEventListener);
-                this.eventBus.off("destroy-protyle", this.destroyProtyleEventListener);
-            });
+                /* 初始化 worker 配置 */
+                await this.bridge?.call<WorkerHandlers["onload"]>(
+                    "onload",
+                    this.i18n,
+                );
+                await this.updateWorkerConfig(true);
+            }
+            else { // worker 已正常运行, 强制刷新 jupyter 资源列表
+                await this.jupyterForceRefresh();
+            }
+
+            /* 注册事件监听器 */
+            this.eventBus.on("click-editortitleicon", this.blockMenuEventListener);
+            this.eventBus.on("click-blockicon", this.blockMenuEventListener);
+            this.eventBus.on("click-editorcontent", this.clickEditorContentEventListener);
+            this.eventBus.on("loaded-protyle-static", this.loadedProtyleEventListener);
+            this.eventBus.on("switch-protyle", this.loadedProtyleEventListener);
+            this.eventBus.off("destroy-protyle", this.destroyProtyleEventListener);
+        }
     }
 
     public override onLayoutReady(): void {
