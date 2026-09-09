@@ -21,8 +21,8 @@
     },
     "devDependencies": {
         "@jupyter-lsp/theme-vscode": "^3.0.0",
-        "@jupyterlab/services": "^7.6.2",
-        "@jupyterlab/ui-components": "^4.6.2",
+        "@jupyterlab/services": "^7.6.3",
+        "@jupyterlab/ui-components": "^4.6.3",
         "@xterm/addon-fit": "^0.11.0",
         "@xterm/xterm": "^6.0.0",
         "strip-ansi": "^7.2.0"
