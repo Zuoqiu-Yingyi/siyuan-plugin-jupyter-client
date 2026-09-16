@@ -353,7 +353,9 @@ export class IpynbImport {
                     if (file) {
                         const response = await this.client.upload({ files: [file] });
                         const filepath = response.data.succMap[filename];
-                        map.set(filename, filepath);
+                        if (filepath) {
+                            map.set(filename, filepath);
+                        }
                         break;
                     }
                 }

@@ -949,7 +949,6 @@ async function handleExecuteReplyMessage(
 
         /* 发生中断 */
         case "abort":
-            // @ts-expect-error 未定义的类型 aborted
             // fallthrough
         case "aborted": {
             context.code.attrs[CONSTANTS.attrs.code.index] = " ";

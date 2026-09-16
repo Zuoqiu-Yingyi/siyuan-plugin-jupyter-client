@@ -79,7 +79,8 @@
 
     const DATETIME_FORMAT = "YYYY-MM-DD hh:mm:ss"; // 日期时间格式
 
-    /* 根节点列表 */
+    /* 根节点列表 (仅使用属性的初值播种, 后续状态由节点自身的 store 维护) */
+    // svelte-ignore state_referenced_locally
     const roots: IFileTreeRootNode[] = [
         {
             type: FileTreeNodeType.Root,
@@ -402,7 +403,8 @@
         });
     }
 
-    /* 标题栏配置 */
+    /* 标题栏配置 (仅使用属性的初值播种, 后续状态由 BlockIcon 的 store 维护) */
+    // svelte-ignore state_referenced_locally
     const bar: IBar = {
         logo: "#icon-jupyter-client",
         title: plugin.i18n.dock.title,

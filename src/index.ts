@@ -101,7 +101,7 @@ import type {
     Session,
 } from "@jupyterlab/services";
 import type xterm from "@xterm/xterm";
-import type { IProtyle } from "siyuan/types/protyle";
+import type { IProtyle } from "siyuan";
 import type { ComponentProps } from "svelte";
 
 import type { BlockID } from "@workspace/types/siyuan";
@@ -854,7 +854,9 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
             responseEncoding: "base64",
         });
         if (response.data.status >= 200 && response.data.status < 300) {
-            return new Blob([toUint8Array(response.data.body)], { type: response.data.contentType });
+            /* `Uint8Array` 的底层缓冲区类型为 `ArrayBufferLike`, 需收窄为 `ArrayBuffer` 才被 `BlobPart` 接受 */
+            const body = toUint8Array(response.data.body) as Uint8Array<ArrayBuffer>;
+            return new Blob([body], { type: response.data.contentType });
         }
         else {
             throw new Error(response.msg);
@@ -2103,7 +2105,8 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
             if (context.isDocumentBlock) { // 文档块菜单
                 submenu.push(...this.buildJupyterDocumentMenuItems(
                     context.id,
-                    context.data.ial,
+                    /* 思源将 IAL 声明为 `IObject` (值可为 string | number | boolean), 但实际传输的均为字符串 */
+                    context.data.ial as Record<string, string>,
                     session,
                     context,
                 ));
@@ -2261,7 +2264,8 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
 
                             const menu_items = this.buildJupyterDocumentMenuItems(
                                 doc_id,
-                                protyle.background.ial,
+                                /* 思源将 IAL 声明为 `IObject` (值可为 string | number | boolean), 但实际传输的均为字符串 */
+                                protyle.background.ial as Record<string, string>,
                                 this.doc2session.get(doc_id),
                                 {
                                     isDocumentBlock: true,
