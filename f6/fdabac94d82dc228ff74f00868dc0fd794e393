@@ -1,0 +1,29 @@
+src/index.ts
+  s_375e4a819920b7::t_5cbc09e50331d4 857-859
+  s_375e4a819920b7::t_351938309c6953 104,2108-2109,2267-2268
+src/components/JupyterInspectDock.svelte
+  s_375e4a819920b7::t_0ee5a6c6e0a8d9 41
+  s_375e4a819920b7::t_03918a874ab78b 43-44
+  s_375e4a819920b7::t_d943ee87f1dc5a 39
+src/jupyter/import.ts
+  s_375e4a819920b7::t_d6b48f9f6a5266 356-358
+src/components/JupyterDock.svelte
+  s_375e4a819920b7::t_bceeff4f658108 406-407
+  s_375e4a819920b7::t_3ae46a5b344c7a 82-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.44-trip",
+  "base_commit_sha": "f6fdabac94d82dc228ff74f00868dc0fd794e393",
+  "prompts": {},
+  "sessions": {
+    "s_375e4a819920b7": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_vmnj8i26q86q",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yingyi / 颖逸 <49649786+Zuoqiu-Yingyi@users.noreply.github.com>"
+    }
+  }
+}
