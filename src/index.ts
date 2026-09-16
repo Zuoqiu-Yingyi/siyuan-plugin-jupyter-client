@@ -17,7 +17,7 @@ import * as sdk from "@siyuan-community/siyuan-sdk";
 import siyuan from "siyuan";
 import { mount, unmount } from "svelte";
 
-import { asyncPrompt } from "@workspace/components/siyuan/dialog/prompt";
+import { asyncPrompt } from "@workspace/components/siyuan/dialog/prompt.svelte.ts";
 import Item from "@workspace/components/siyuan/menu/Item.svelte";
 import JupyterTab from "@workspace/components/siyuan/tab/IframeTab.svelte";
 import { replaceRangeWithText } from "@workspace/utils/dom/range";
@@ -49,6 +49,7 @@ import {
 } from "@workspace/utils/siyuan/menu/block";
 import { fn__code } from "@workspace/utils/siyuan/text/span";
 import { isLightTheme } from "@workspace/utils/siyuan/theme";
+import { state } from "@workspace/utils/svelte/runes.svelte";
 import { openWindow } from "@workspace/utils/window/open";
 import { WorkerBridgeMaster } from "@workspace/utils/worker/bridge/master";
 
@@ -101,7 +102,7 @@ import type {
 } from "@jupyterlab/services";
 import type xterm from "@xterm/xterm";
 import type { IProtyle } from "siyuan/types/protyle";
-import type { ComponentEvents } from "svelte";
+import type { ComponentProps } from "svelte";
 
 import type { BlockID } from "@workspace/types/siyuan";
 import type {
@@ -135,8 +136,11 @@ export type TMenuContext = {
     id: BlockID;
 } | IBlockMenuContext;
 export interface IJupyterTab extends siyuan.Custom {
-    component?: InstanceType<typeof JupyterTab>;
+    component?: ReturnType<typeof mount>;
 }
+
+export type IJupyterDockProps = ComponentProps<typeof JupyterDock>;
+export type IJupyterInspectDockProps = ComponentProps<typeof JupyterInspectDock>;
 
 export default class JupyterClientPlugin extends siyuan.Plugin {
     static readonly GLOBAL_CONFIG_NAME = "global-config";
@@ -191,12 +195,15 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
         dock: ReturnType<siyuan.Plugin["addDock"]>;
         model?: siyuan.Custom | siyuan.MobileCustom;
         component?: ReturnType<typeof mount>;
+        /* Svelte 5 不再提供 `$set`, 改为直接修改传入 `mount` 的响应式属性对象 */
+        props?: IJupyterDockProps;
     }; // Jupyter 管理面板
 
     protected jupyterInspectDock!: {
         dock: ReturnType<siyuan.Plugin["addDock"]>;
         model?: siyuan.Custom | siyuan.MobileCustom;
         component?: ReturnType<typeof mount>;
+        props?: IJupyterInspectDockProps;
     }; // Jupyter 上下文帮助面板
 
     public readonly doc2session = new Map<string, Session.IModel>(); // 文档 ID 到会话的映射
@@ -261,7 +268,7 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
                 // plugin.logger.debug("tab-init");
                 // plugin.logger.debug(this);
 
-                this.component = new JupyterTab({
+                this.component = mount(JupyterTab, {
                     target: this.element,
                     props: {
                         ...this.data,
@@ -271,7 +278,9 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
             destroy(this: IJupyterTab) {
                 // plugin.logger.debug("tab-destroy");
 
-                this.component?.$destroy();
+                if (this.component) {
+                    unmount(this.component);
+                }
             },
         });
 
@@ -334,22 +343,27 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
                     // plugin.logger.debug(this);
 
                     this.element.classList.add("fn__flex-column");
+                    const props = state<IJupyterDockProps>({
+                        plugin,
+                        ...this.data,
+                        kernelspecs: plugin.kernelspecs,
+                        kernels: plugin.kernels,
+                        sessions: plugin.sessions,
+                    });
                     const dock = mount(JupyterDock, {
                         target: this.element,
-                        props: {
-                            plugin,
-                            ...this.data,
-                            kernelspecs: plugin.kernelspecs,
-                            kernels: plugin.kernels,
-                            sessions: plugin.sessions,
-                        },
+                        props,
                     });
                     plugin.jupyterDock.model = this;
                     plugin.jupyterDock.component = dock;
+                    plugin.jupyterDock.props = props;
                 },
                 destroy() {
-                    plugin.jupyterDock.component?.$destroy();
+                    if (plugin.jupyterDock.component) {
+                        unmount(plugin.jupyterDock.component);
+                    }
                     delete plugin.jupyterDock.component;
+                    delete plugin.jupyterDock.props;
                     delete plugin.jupyterDock.model;
                 },
             }),
@@ -371,22 +385,25 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
                     // plugin.logger.debug(this);
 
                     this.element.classList.add("fn__flex-column");
+                    const props = state<IJupyterInspectDockProps>({
+                        plugin,
+                        stream: "",
+                        ...this.data,
+                    });
                     const dock = mount(JupyterInspectDock, {
                         target: this.element,
-                        props: {
-                            plugin,
-                            stream: "",
-                            ...this.data,
-                        },
+                        props,
                     });
                     plugin.jupyterInspectDock.model = this;
                     plugin.jupyterInspectDock.component = dock;
+                    plugin.jupyterInspectDock.props = props;
                 },
                 destroy() {
                     if (plugin.jupyterInspectDock.component) {
                         unmount(plugin.jupyterInspectDock.component);
                     }
                     delete plugin.jupyterInspectDock.component;
+                    delete plugin.jupyterInspectDock.props;
                     delete plugin.jupyterInspectDock.model;
                 },
             }),
@@ -1261,7 +1278,7 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
                     element: globalThis.document.createElement("div"), // 避免生成其他内容
                     bind: (element) => {
                         /* 挂载一个 svelte 菜单项组件 */
-                        const item = new Item({
+                        mount(Item, {
                             target: element,
                             props: {
                                 file: true,
@@ -1270,21 +1287,21 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
                                 accept: ".ipynb",
                                 multiple: false,
                                 webkitdirectory: false,
-                            },
-                        });
 
-                        item.$on("selected", async (e: ComponentEvents<Item>["selected"]) => {
-                            // this.plugin.logger.debug(e);
-                            const files = e.detail.files;
-                            const file = files?.item(0);
-                            if (file) {
-                                await this.bridge?.call<WorkerHandlers["importIpynb"]>(
-                                    "importIpynb",
-                                    id,
-                                    file,
-                                    "override",
-                                );
-                            }
+                                onSelected: async (e) => {
+                                    // this.plugin.logger.debug(e);
+                                    const files = e.files;
+                                    const file = files?.item(0);
+                                    if (file) {
+                                        await this.bridge?.call<WorkerHandlers["importIpynb"]>(
+                                            "importIpynb",
+                                            id,
+                                            file,
+                                            "override",
+                                        );
+                                    }
+                                },
+                            },
                         });
                     },
                 },
@@ -1292,7 +1309,7 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
                     element: globalThis.document.createElement("div"), // 避免生成其他内容
                     bind: (element) => {
                         /* 挂载一个 svelte 菜单项组件 */
-                        const item = new Item({
+                        mount(Item, {
                             target: element,
                             props: {
                                 file: true,
@@ -1301,21 +1318,21 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
                                 accept: ".ipynb",
                                 multiple: false,
                                 webkitdirectory: false,
-                            },
-                        });
 
-                        item.$on("selected", async (e) => {
-                            // this.plugin.logger.debug(e);
-                            const files = e.detail.files;
-                            const file = files?.item(0);
-                            if (file) {
-                                await this.bridge?.call<WorkerHandlers["importIpynb"]>(
-                                    "importIpynb",
-                                    id,
-                                    file,
-                                    "append",
-                                );
-                            }
+                                onSelected: async (e) => {
+                                    // this.plugin.logger.debug(e);
+                                    const files = e.files;
+                                    const file = files?.item(0);
+                                    if (file) {
+                                        await this.bridge?.call<WorkerHandlers["importIpynb"]>(
+                                            "importIpynb",
+                                            id,
+                                            file,
+                                            "append",
+                                        );
+                                    }
+                                },
+                            },
                         });
                     },
                 },
@@ -1545,7 +1562,7 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
                                     : text as string,
                                 true,
                             );
-                            this.jupyterInspectDock.component?.$set({ stream });
+                            Object.assign(this.jupyterInspectDock.props ?? {}, { stream });
                             return true;
                         }
                         else {
@@ -2022,7 +2039,7 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
     /* 更新侧边栏当前文档对应的项 */
     protected updateDockFocusItem(docID: BlockID): void {
         const session = this.doc2session.get(docID);
-        this.jupyterDock.component?.$set({
+        Object.assign(this.jupyterDock.props ?? {}, {
             currentSpec: session?.kernel?.name,
             currentKernel: session?.kernel?.id,
             currentSession: session?.id,
@@ -2333,7 +2350,7 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
                 this.kernelName2displayName.set(name, spec.display_name);
             }
         }
-        this.jupyterDock.component?.$set({
+        Object.assign(this.jupyterDock.props ?? {}, {
             kernelspecs,
         });
     };
@@ -2344,7 +2361,7 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
 
         this.kernels.length = 0;
         this.kernels.push(...kernels);
-        this.jupyterDock.component?.$set({
+        Object.assign(this.jupyterDock.props ?? {}, {
             kernels,
         });
     };
@@ -2367,7 +2384,7 @@ export default class JupyterClientPlugin extends siyuan.Plugin {
 
         this.sessions.length = 0;
         this.sessions.push(...sessions);
-        this.jupyterDock.component?.$set({
+        Object.assign(this.jupyterDock.props ?? {}, {
             sessions,
         });
     };

@@ -24,8 +24,8 @@
     import uuid from "@workspace/utils/misc/uuid";
 
     import type { Session } from "@jupyterlab/services";
-    import type { ComponentEvents } from "svelte";
 
+    import type { IDialogEvent } from "@workspace/components/siyuan/dialog/event";
     import type { BlockID } from "@workspace/types/siyuan";
 
     import type JupyterClientPlugin from "@/index";
@@ -138,16 +138,16 @@
     });
 
     /* 点击取消按钮 */
-    async function onCancle(e: ComponentEvents<Dialog>["cancel"]) {
+    async function onCancle(e: IDialogEvent["cancel"]) {
         oncancel({
             id: docID,
-            event: e.detail.event,
+            event: e.event,
             session,
         });
     }
 
     /* 点击确认按钮 */
-    async function onConfirm(e: ComponentEvents<Dialog>["confirm"]) {
+    async function onConfirm(e: IDialogEvent["confirm"]) {
         try {
             let session_model: Session.IModel | undefined = session;
             if (flag_session_new) {
@@ -268,7 +268,7 @@
 
         onconfirm({
             id: docID,
-            event: e.detail.event,
+            event: e.event,
             session,
         });
     }
@@ -280,8 +280,8 @@
         : !flag_session_connected // 是否未连接
         ? i18n.settings.sessionSettings.confirm.connect
         : i18n.settings.sessionSettings.confirm.update}
-    on:cancel={onCancle}
-    on:confirm={onConfirm}
+    onCancel={onCancle}
+    onConfirm={onConfirm}
 >
     <Panel>
         <!-- 连接会话 -->
@@ -289,26 +289,27 @@
             text={i18n.settings.sessionSettings.connect.description}
             title={i18n.settings.sessionSettings.connect.title}
         >
-            <Input
-                slot="input"
-                options={session_options}
-                settingKey="session.id"
-                settingValue={session.id}
-                type={ItemType.select}
-                on:changed={async (e) => {
-                    const session_id = e.detail.value;
-                    if (session_id === session_options[0]?.key) {
-                        session = session_new;
-                    }
-                    else {
-                        const session_selected = plugin.sessions.find((s) => s.id === session_id);
-                        if (session_selected) {
-                            // 连接已存在的会话
-                            session = session_selected;
+            {#snippet input()}
+                <Input
+                    onChanged={async (e) => {
+                        const session_id = e.value;
+                        if (session_id === session_options[0]?.key) {
+                            session = session_new;
                         }
-                    }
-                }}
-            />
+                        else {
+                            const session_selected = plugin.sessions.find((s) => s.id === session_id);
+                            if (session_selected) {
+                                // 连接已存在的会话
+                                session = session_selected;
+                            }
+                        }
+                    }}
+                    options={session_options}
+                    settingKey="session.id"
+                    settingValue={session.id}
+                    type={ItemType.select}
+                />
+            {/snippet}
         </Item>
 
         <!-- 会话名称 -->
@@ -317,23 +318,24 @@
             text={i18n.settings.sessionSettings.name.description}
             title={i18n.settings.sessionSettings.name.title}
         >
-            <Input
-                slot="input"
-                block={true}
-                disabled={flag_session_new // 若为新建会话, 可以编辑
-                    ? false
-                    : !flag_session_connected}
-                settingKey="session.name"
-                settingValue={session.name}
-                type={ItemType.text}
-                on:changed={async (e) => {
-                    const name = e.detail.value;
-                    session.name = name;
-                    if (flag_session_new) {
-                        session_new.name = name;
-                    }
-                }}
-            />
+            {#snippet input()}
+                <Input
+                    block={true}
+                    disabled={flag_session_new // 若为新建会话, 可以编辑
+                        ? false
+                        : !flag_session_connected}
+                    onChanged={async (e) => {
+                        const name = e.value;
+                        session.name = name;
+                        if (flag_session_new) {
+                            session_new.name = name;
+                        }
+                    }}
+                    settingKey="session.name"
+                    settingValue={session.name}
+                    type={ItemType.text}
+                />
+            {/snippet}
         </Item>
 
         <!-- 会话路径 -->
@@ -342,23 +344,24 @@
             text={i18n.settings.sessionSettings.path.description}
             title={i18n.settings.sessionSettings.path.title}
         >
-            <Input
-                slot="input"
-                block={true}
-                disabled={flag_session_new // 若为新建会话, 可以编辑
-                    ? false
-                    : !flag_session_connected}
-                settingKey="session.path"
-                settingValue={session.path}
-                type={ItemType.text}
-                on:changed={async (e) => {
-                    const path = e.detail.value;
-                    session.path = path;
-                    if (flag_session_new) {
-                        session_new.path = path;
-                    }
-                }}
-            />
+            {#snippet input()}
+                <Input
+                    block={true}
+                    disabled={flag_session_new // 若为新建会话, 可以编辑
+                        ? false
+                        : !flag_session_connected}
+                    onChanged={async (e) => {
+                        const path = e.value;
+                        session.path = path;
+                        if (flag_session_new) {
+                            session_new.path = path;
+                        }
+                    }}
+                    settingKey="session.path"
+                    settingValue={session.path}
+                    type={ItemType.text}
+                />
+            {/snippet}
         </Item>
 
         <!-- 会话类型 -->
@@ -366,26 +369,27 @@
             text={i18n.settings.sessionSettings.type.description}
             title={i18n.settings.sessionSettings.type.title}
         >
-            <Input
-                slot="input"
-                disabled={flag_session_new // 若为新建会话, 可以编辑
-                    ? false
-                    : !flag_session_connected}
-                options={[
-                    { key: "console", text: "console" }, //
-                    { key: "notebook", text: "notebook" }, //
-                ]}
-                settingKey="session.type"
-                settingValue={session.type}
-                type={ItemType.select}
-                on:changed={async (e) => {
-                    const type = e.detail.value;
-                    session.type = type;
-                    if (flag_session_new) {
-                        session_new.type = type;
-                    }
-                }}
-            />
+            {#snippet input()}
+                <Input
+                    disabled={flag_session_new // 若为新建会话, 可以编辑
+                        ? false
+                        : !flag_session_connected}
+                    onChanged={async (e) => {
+                        const type = e.value;
+                        session.type = type;
+                        if (flag_session_new) {
+                            session_new.type = type;
+                        }
+                    }}
+                    options={[
+                        { key: "console", text: "console" }, //
+                        { key: "notebook", text: "notebook" }, //
+                    ]}
+                    settingKey="session.type"
+                    settingValue={session.type}
+                    type={ItemType.select}
+                />
+            {/snippet}
         </Item>
 
         <!-- 内核选择 -->
@@ -394,56 +398,57 @@
             text={i18n.settings.sessionSettings.kernel.description}
             title={i18n.settings.sessionSettings.kernel.title}
         >
-            <Input
-                slot="input"
-                block={true}
-                disabled={flag_session_new // 若为新建会话, 可以编辑
-                    ? false
-                    : !flag_session_connected}
-                options={flag_session_new ? kernel_options_new : kernel_options}
-                settingKey="session.kernel"
-                settingValue={session.kernel // 是否禁用内核
-                    ? plugin.kernels.find((k) => k.id === session.kernel?.id)?.id // 使用内核
-                        ?? session.kernel?.name // 启动内核
-                        ?? plugin.kernelspecs.default // 默认启动内核
-                    : ""}
-                type={ItemType.select}
-                on:changed={async (e) => {
-                    const key = e.detail.value;
-                    if (key === "") {
-                        // 禁用内核
-                        session.kernel = null;
-                        if (flag_session_new) {
-                            session_new.kernel = null;
-                        }
-                    }
-                    else if (plugin.kernels.some((k) => k.id === key)) {
-                        // 使用内核
-                        if (session.kernel) {
-                            session.kernel.id = key;
-                        }
-                        if (flag_session_new) {
-                            if (session_new.kernel) {
-                                session_new.kernel.id = key;
+            {#snippet input()}
+                <Input
+                    block={true}
+                    disabled={flag_session_new // 若为新建会话, 可以编辑
+                        ? false
+                        : !flag_session_connected}
+                    onChanged={async (e) => {
+                        const key = e.value;
+                        if (key === "") {
+                            // 禁用内核
+                            session.kernel = null;
+                            if (flag_session_new) {
+                                session_new.kernel = null;
                             }
                         }
-                    }
-                    else {
-                        // 新建内核, 为了避免 key 与已有内核重复, 重新生成内核 id
-                        const kernel_id_new = uuid.v4();
-                        if (session.kernel) {
-                            session.kernel.id = kernel_id_new;
-                            session.kernel.name = key;
-                        }
-                        if (flag_session_new) {
-                            if (session_new.kernel) {
-                                session_new.kernel.id = kernel_id_new;
-                                session_new.kernel.name = key;
+                        else if (plugin.kernels.some((k) => k.id === key)) {
+                            // 使用内核
+                            if (session.kernel) {
+                                session.kernel.id = key;
+                            }
+                            if (flag_session_new) {
+                                if (session_new.kernel) {
+                                    session_new.kernel.id = key;
+                                }
                             }
                         }
-                    }
-                }}
-            />
+                        else {
+                            // 新建内核, 为了避免 key 与已有内核重复, 重新生成内核 id
+                            const kernel_id_new = uuid.v4();
+                            if (session.kernel) {
+                                session.kernel.id = kernel_id_new;
+                                session.kernel.name = key;
+                            }
+                            if (flag_session_new) {
+                                if (session_new.kernel) {
+                                    session_new.kernel.id = kernel_id_new;
+                                    session_new.kernel.name = key;
+                                }
+                            }
+                        }
+                    }}
+                    options={flag_session_new ? kernel_options_new : kernel_options}
+                    settingKey="session.kernel"
+                    settingValue={session.kernel // 是否禁用内核
+                        ? plugin.kernels.find((k) => k.id === session.kernel?.id)?.id // 使用内核
+                            ?? session.kernel?.name // 启动内核
+                            ?? plugin.kernelspecs.default // 默认启动内核
+                        : ""}
+                    type={ItemType.select}
+                />
+            {/snippet}
         </Item>
     </Panel>
 </Dialog>

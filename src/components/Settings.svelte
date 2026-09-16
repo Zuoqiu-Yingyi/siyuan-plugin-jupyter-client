@@ -142,355 +142,374 @@
 <Panels
     focus={panels_focus_key}
     {panels}
-    let:focus={focusPanel}
 >
-    <!-- 常规设置面板 -->
-    <Panel display={panels[0]?.key === focusPanel}>
-        <!-- 重置设置 -->
-        <Item
-            text={i18n.settings.generalSettings.reset.description}
-            title={i18n.settings.generalSettings.reset.title}
-        >
-            <Input
-                slot="input"
-                settingKey="Reset"
-                settingValue={i18n.settings.generalSettings.reset.text}
-                type={ItemType.button}
-                on:clicked={resetOptions}
-            />
-        </Item>
-    </Panel>
-
-    <!-- jupyter 设置面板 -->
-    <Panel display={panels[1]?.key === focusPanel}>
-        <Tabs
-            focus={jupyter_settings_tabs_focus_key}
-            tabs={tabs.jupyter}
-            let:focus={focusTab}
-        >
-            <!-- 标签页 1 - 全局设置 -->
-            <div
-                class:fn__none={tabs.jupyter[0]?.key !== focusTab}
-                data-type={tabs.jupyter[0]?.name}
+    {#snippet children(focusPanel)}
+        <!-- 常规设置面板 -->
+        <Panel display={panels[0]?.key === focusPanel}>
+            <!-- 重置设置 -->
+            <Item
+                text={i18n.settings.generalSettings.reset.description}
+                title={i18n.settings.generalSettings.reset.title}
             >
-                <!-- connect -->
-                <Item
-                    text={i18n.settings.jupyterSettings.globalTab.enable.description}
-                    title={i18n.settings.jupyterSettings.globalTab.enable.title}
-                >
+                {#snippet input()}
                     <Input
-                        slot="input"
-                        settingKey="enable"
-                        settingValue={config.jupyter.server.enable}
-                        type={ItemType.checkbox}
-                        on:changed={async (e) => {
-                            config.jupyter.server.enable = e.detail.value;
-                            await updated(true);
-                        }}
+                        onClicked={resetOptions}
+                        settingKey="Reset"
+                        settingValue={i18n.settings.generalSettings.reset.text}
+                        type={ItemType.button}
                     />
-                </Item>
+                {/snippet}
+            </Item>
+        </Panel>
 
-                <!-- 语言服务调用延时 -->
-                <Item
-                    text={i18n.settings.jupyterSettings.globalTab.delay.description}
-                    title={i18n.settings.jupyterSettings.globalTab.delay.title}
-                >
+        <!-- jupyter 设置面板 -->
+        <Panel display={panels[1]?.key === focusPanel}>
+            <Tabs
+                focus={jupyter_settings_tabs_focus_key}
+                tabs={tabs.jupyter}
+            >
+                {#snippet children(focusTab)}
+                    <!-- 标签页 1 - 全局设置 -->
+                    <div
+                        class:fn__none={tabs.jupyter[0]?.key !== focusTab}
+                        data-type={tabs.jupyter[0]?.name}
+                    >
+                        <!-- connect -->
+                        <Item
+                            text={i18n.settings.jupyterSettings.globalTab.enable.description}
+                            title={i18n.settings.jupyterSettings.globalTab.enable.title}
+                        >
+                            {#snippet input()}
+                                <Input
+                                    onChanged={async (e) => {
+                                        config.jupyter.server.enable = e.value;
+                                        await updated(true);
+                                    }}
+                                    settingKey="enable"
+                                    settingValue={config.jupyter.server.enable}
+                                    type={ItemType.checkbox}
+                                />
+                            {/snippet}
+                        </Item>
+
+                        <!-- 语言服务调用延时 -->
+                        <Item
+                            text={i18n.settings.jupyterSettings.globalTab.delay.description}
+                            title={i18n.settings.jupyterSettings.globalTab.delay.title}
+                        >
+                            {#snippet input()}
+                                <Input
+                                    limits={{
+                                        min: 0,
+                                        max: Infinity,
+                                        step: 25,
+                                    }}
+                                    onChanged={async (e) => {
+                                        config.jupyter.edit.delay = e.value;
+                                        await updated();
+                                    }}
+                                    settingKey="delay"
+                                    settingValue={config.jupyter.edit.delay}
+                                    type={ItemType.number}
+                                />
+                            {/snippet}
+                        </Item>
+                    </div>
+
+                    <!-- 标签页 2 - 服务设置 -->
+                    <div
+                        class:fn__none={tabs.jupyter[1]?.key !== focusTab}
+                        data-type={tabs.jupyter[1]?.name}
+                    >
+                        <!-- base url -->
+                        <Item
+                            block={true}
+                            text={i18n.settings.jupyterSettings.serviceTab.baseUrl.description}
+                            title={i18n.settings.jupyterSettings.serviceTab.baseUrl.title}
+                        >
+                            {#snippet input()}
+                                <Input
+                                    block={true}
+                                    onChanged={async (e) => {
+                                        config.jupyter.server.settings.baseUrl = e.value;
+                                        await updated(true);
+                                    }}
+                                    placeholder={DEFAULT_SETTINGS.baseUrl}
+                                    settingKey="baseUrl"
+                                    settingValue={config.jupyter.server.settings.baseUrl}
+                                    type={ItemType.text}
+                                />
+                            {/snippet}
+                        </Item>
+
+                        <!-- app url -->
+                        <Item
+                            block={true}
+                            text={i18n.settings.jupyterSettings.serviceTab.appUrl.description}
+                            title={i18n.settings.jupyterSettings.serviceTab.appUrl.title}
+                        >
+                            {#snippet input()}
+                                <Input
+                                    block={true}
+                                    onChanged={async (e) => {
+                                        config.jupyter.server.settings.appUrl = e.value;
+                                        await updated(true);
+                                    }}
+                                    placeholder={DEFAULT_SETTINGS.appUrl}
+                                    settingKey="appUrl"
+                                    settingValue={config.jupyter.server.settings.appUrl}
+                                    type={ItemType.text}
+                                />
+                            {/snippet}
+                        </Item>
+
+                        <!-- websocket url -->
+                        <Item
+                            block={true}
+                            text={i18n.settings.jupyterSettings.serviceTab.wsUrl.description}
+                            title={i18n.settings.jupyterSettings.serviceTab.wsUrl.title}
+                        >
+                            {#snippet input()}
+                                <Input
+                                    block={true}
+                                    onChanged={async (e) => {
+                                        config.jupyter.server.settings.wsUrl = e.value;
+                                        await updated(true);
+                                    }}
+                                    placeholder={placeholder_wsUrl}
+                                    settingKey="wsUrl"
+                                    settingValue={config.jupyter.server.settings.wsUrl}
+                                    type={ItemType.text}
+                                />
+                            {/snippet}
+                        </Item>
+
+                        <!-- token -->
+                        <Item
+                            block={true}
+                            text={i18n.settings.jupyterSettings.serviceTab.token.description}
+                            title={i18n.settings.jupyterSettings.serviceTab.token.title}
+                        >
+                            {#snippet input()}
+                                <Input
+                                    block={true}
+                                    onChanged={async (e) => {
+                                        config.jupyter.server.settings.token = e.value;
+                                        await updated(true);
+                                    }}
+                                    settingKey="token"
+                                    settingValue={config.jupyter.server.settings.token}
+                                    type={ItemType.text}
+                                />
+                            {/snippet}
+                        </Item>
+                    </div>
+
+                    <!-- 标签页 3 - 运行设置 -->
+                    <div
+                        class:fn__none={tabs.jupyter[2]?.key !== focusTab}
+                        data-type={tabs.jupyter[2]?.name}
+                    >
+                        <!-- 运行时跳转 -->
+                        <Item
+                            text={i18n.settings.jupyterSettings.executeTab.executeGoto.description}
+                            title={i18n.settings.jupyterSettings.executeTab.executeGoto.title}
+                        >
+                            {#snippet input()}
+                                <Input
+                                    onChanged={async (e) => {
+                                        config.jupyter.execute.goto = e.value;
+                                        await updated();
+                                    }}
+                                    settingKey="goto"
+                                    settingValue={config.jupyter.execute.goto}
+                                    type={ItemType.checkbox}
+                                />
+                            {/snippet}
+                        </Item>
+
+                        <!-- 输入时跳转 -->
+                        <Item
+                            text={i18n.settings.jupyterSettings.executeTab.inputGoto.description}
+                            title={i18n.settings.jupyterSettings.executeTab.inputGoto.title}
+                        >
+                            {#snippet input()}
+                                <Input
+                                    onChanged={async (e) => {
+                                        config.jupyter.execute.input.goto = e.value;
+                                        await updated();
+                                    }}
+                                    settingKey="input.goto"
+                                    settingValue={config.jupyter.execute.input.goto}
+                                    type={ItemType.checkbox}
+                                />
+                            {/snippet}
+                        </Item>
+
+                        <!-- 错误中断 -->
+                        <Item
+                            text={i18n.settings.jupyterSettings.executeTab.stopOnError.description}
+                            title={i18n.settings.jupyterSettings.executeTab.stopOnError.title}
+                        >
+                            {#snippet input()}
+                                <Input
+                                    onChanged={async (e) => {
+                                        config.jupyter.execute.content.stop_on_error = e.value;
+                                        await updated();
+                                    }}
+                                    settingKey="content.stop_on_error"
+                                    settingValue={config.jupyter.execute.content.stop_on_error}
+                                    type={ItemType.checkbox}
+                                />
+                            {/snippet}
+                        </Item>
+                    </div>
+
+                    <!-- 标签页 4 - 输出设置 -->
+                    <div
+                        class:fn__none={tabs.jupyter[3]?.key !== focusTab}
+                        data-type={tabs.jupyter[3]?.name}
+                    >
+                        <!-- 使用 Xterm 渲染输出内容 -->
+                        <Item
+                            text={i18n.settings.jupyterSettings.outputTab.xterm.description}
+                            title={i18n.settings.jupyterSettings.outputTab.xterm.title}
+                        >
+                            {#snippet input()}
+                                <Input
+                                    onChanged={async (e) => {
+                                        config.jupyter.execute.output.parser.xterm = e.value;
+                                        await updated();
+                                    }}
+                                    settingKey="output.parser.xterm"
+                                    settingValue={config.jupyter.execute.output.parser.xterm}
+                                    type={ItemType.checkbox}
+                                />
+                            {/snippet}
+                        </Item>
+
+                        <!-- 转义标志符号 -->
+                        <Item
+                            text={i18n.settings.jupyterSettings.outputTab.escaped.description}
+                            title={i18n.settings.jupyterSettings.outputTab.escaped.title}
+                        >
+                            {#snippet input()}
+                                <Input
+                                    onChanged={async (e) => {
+                                        config.jupyter.execute.output.parser.escaped = e.value;
+                                        await updated();
+                                    }}
+                                    settingKey="output.parser.escaped"
+                                    settingValue={config.jupyter.execute.output.parser.escaped}
+                                    type={ItemType.checkbox}
+                                />
+                            {/snippet}
+                        </Item>
+
+                        <!-- 解析控制字符 -->
+                        <Item
+                            text={i18n.settings.jupyterSettings.outputTab.cntrl.description}
+                            title={i18n.settings.jupyterSettings.outputTab.cntrl.title}
+                        >
+                            {#snippet input()}
+                                <Input
+                                    onChanged={async (e) => {
+                                        config.jupyter.execute.output.parser.cntrl = e.value;
+                                        await updated();
+                                    }}
+                                    settingKey="output.parser.cntrl"
+                                    settingValue={config.jupyter.execute.output.parser.cntrl}
+                                    type={ItemType.checkbox}
+                                />
+                            {/snippet}
+                        </Item>
+                    </div>
+
+                    <!-- 标签页 5 - 导入设置 -->
+                    <div
+                        class:fn__none={tabs.jupyter[4]?.key !== focusTab}
+                        data-type={tabs.jupyter[4]?.name}
+                    >
+                        <!-- 使用 Xterm 渲染输出内容 -->
+                        <Item
+                            text={i18n.settings.jupyterSettings.importTab.xterm.description}
+                            title={i18n.settings.jupyterSettings.importTab.xterm.title}
+                        >
+                            {#snippet input()}
+                                <Input
+                                    onChanged={async (e) => {
+                                        config.jupyter.import.parser.xterm = e.value;
+                                        await updated();
+                                    }}
+                                    settingKey="import.parser.xterm"
+                                    settingValue={config.jupyter.import.parser.xterm}
+                                    type={ItemType.checkbox}
+                                />
+                            {/snippet}
+                        </Item>
+
+                        <!-- 转义标志符号 -->
+                        <Item
+                            text={i18n.settings.jupyterSettings.importTab.escaped.description}
+                            title={i18n.settings.jupyterSettings.importTab.escaped.title}
+                        >
+                            {#snippet input()}
+                                <Input
+                                    onChanged={async (e) => {
+                                        config.jupyter.import.parser.escaped = e.value;
+                                        await updated();
+                                    }}
+                                    settingKey="import.parser.escaped"
+                                    settingValue={config.jupyter.import.parser.escaped}
+                                    type={ItemType.checkbox}
+                                />
+                            {/snippet}
+                        </Item>
+
+                        <!-- 解析控制字符 -->
+                        <Item
+                            text={i18n.settings.jupyterSettings.importTab.cntrl.description}
+                            title={i18n.settings.jupyterSettings.importTab.cntrl.title}
+                        >
+                            {#snippet input()}
+                                <Input
+                                    onChanged={async (e) => {
+                                        config.jupyter.import.parser.cntrl = e.value;
+                                        await updated();
+                                    }}
+                                    settingKey="import.parser.cntrl"
+                                    settingValue={config.jupyter.import.parser.cntrl}
+                                    type={ItemType.checkbox}
+                                />
+                            {/snippet}
+                        </Item>
+                    </div>
+                {/snippet}
+            </Tabs>
+        </Panel>
+
+        <!-- xterm 设置面板 -->
+        <Panel display={panels[2]?.key === focusPanel}>
+            <!-- 字体设置 -->
+            <Item
+                text={i18n.settings.xtermSettings.fontFamily.description}
+                title={i18n.settings.xtermSettings.fontFamily.title}
+            >
+                {#snippet input()}
                     <Input
-                        slot="input"
-                        limits={{
-                            min: 0,
-                            max: Infinity,
-                            step: 25,
-                        }}
-                        settingKey="delay"
-                        settingValue={config.jupyter.edit.delay}
-                        type={ItemType.number}
-                        on:changed={async (e) => {
-                            config.jupyter.edit.delay = e.detail.value;
+                        onChanged={async (e) => {
+                            config.xterm.options.fontFamily = e.value;
                             await updated();
                         }}
-                    />
-                </Item>
-            </div>
-
-            <!-- 标签页 2 - 服务设置 -->
-            <div
-                class:fn__none={tabs.jupyter[1]?.key !== focusTab}
-                data-type={tabs.jupyter[1]?.name}
-            >
-                <!-- base url -->
-                <Item
-                    block={true}
-                    text={i18n.settings.jupyterSettings.serviceTab.baseUrl.description}
-                    title={i18n.settings.jupyterSettings.serviceTab.baseUrl.title}
-                >
-                    <Input
-                        slot="input"
-                        block={true}
-                        placeholder={DEFAULT_SETTINGS.baseUrl}
-                        settingKey="baseUrl"
-                        settingValue={config.jupyter.server.settings.baseUrl}
+                        placeholder="--b3-font-family-code"
+                        settingKey="fontFamily"
+                        settingValue={config.xterm.options.fontFamily}
                         type={ItemType.text}
-                        on:changed={async (e) => {
-                            config.jupyter.server.settings.baseUrl = e.detail.value;
-                            await updated(true);
-                        }}
                     />
-                </Item>
-
-                <!-- app url -->
-                <Item
-                    block={true}
-                    text={i18n.settings.jupyterSettings.serviceTab.appUrl.description}
-                    title={i18n.settings.jupyterSettings.serviceTab.appUrl.title}
-                >
-                    <Input
-                        slot="input"
-                        block={true}
-                        placeholder={DEFAULT_SETTINGS.appUrl}
-                        settingKey="appUrl"
-                        settingValue={config.jupyter.server.settings.appUrl}
-                        type={ItemType.text}
-                        on:changed={async (e) => {
-                            config.jupyter.server.settings.appUrl = e.detail.value;
-                            await updated(true);
-                        }}
-                    />
-                </Item>
-
-                <!-- websocket url -->
-                <Item
-                    block={true}
-                    text={i18n.settings.jupyterSettings.serviceTab.wsUrl.description}
-                    title={i18n.settings.jupyterSettings.serviceTab.wsUrl.title}
-                >
-                    <Input
-                        slot="input"
-                        block={true}
-                        placeholder={placeholder_wsUrl}
-                        settingKey="wsUrl"
-                        settingValue={config.jupyter.server.settings.wsUrl}
-                        type={ItemType.text}
-                        on:changed={async (e) => {
-                            config.jupyter.server.settings.wsUrl = e.detail.value;
-                            await updated(true);
-                        }}
-                    />
-                </Item>
-
-                <!-- token -->
-                <Item
-                    block={true}
-                    text={i18n.settings.jupyterSettings.serviceTab.token.description}
-                    title={i18n.settings.jupyterSettings.serviceTab.token.title}
-                >
-                    <Input
-                        slot="input"
-                        block={true}
-                        settingKey="token"
-                        settingValue={config.jupyter.server.settings.token}
-                        type={ItemType.text}
-                        on:changed={async (e) => {
-                            config.jupyter.server.settings.token = e.detail.value;
-                            await updated(true);
-                        }}
-                    />
-                </Item>
-            </div>
-
-            <!-- 标签页 3 - 运行设置 -->
-            <div
-                class:fn__none={tabs.jupyter[2]?.key !== focusTab}
-                data-type={tabs.jupyter[2]?.name}
-            >
-                <!-- 运行时跳转 -->
-                <Item
-                    text={i18n.settings.jupyterSettings.executeTab.executeGoto.description}
-                    title={i18n.settings.jupyterSettings.executeTab.executeGoto.title}
-                >
-                    <Input
-                        slot="input"
-                        settingKey="goto"
-                        settingValue={config.jupyter.execute.goto}
-                        type={ItemType.checkbox}
-                        on:changed={async (e) => {
-                            config.jupyter.execute.goto = e.detail.value;
-                            await updated();
-                        }}
-                    />
-                </Item>
-
-                <!-- 输入时跳转 -->
-                <Item
-                    text={i18n.settings.jupyterSettings.executeTab.inputGoto.description}
-                    title={i18n.settings.jupyterSettings.executeTab.inputGoto.title}
-                >
-                    <Input
-                        slot="input"
-                        settingKey="input.goto"
-                        settingValue={config.jupyter.execute.input.goto}
-                        type={ItemType.checkbox}
-                        on:changed={async (e) => {
-                            config.jupyter.execute.input.goto = e.detail.value;
-                            await updated();
-                        }}
-                    />
-                </Item>
-
-                <!-- 错误中断 -->
-                <Item
-                    text={i18n.settings.jupyterSettings.executeTab.stopOnError.description}
-                    title={i18n.settings.jupyterSettings.executeTab.stopOnError.title}
-                >
-                    <Input
-                        slot="input"
-                        settingKey="content.stop_on_error"
-                        settingValue={config.jupyter.execute.content.stop_on_error}
-                        type={ItemType.checkbox}
-                        on:changed={async (e) => {
-                            config.jupyter.execute.content.stop_on_error = e.detail.value;
-                            await updated();
-                        }}
-                    />
-                </Item>
-            </div>
-
-            <!-- 标签页 4 - 输出设置 -->
-            <div
-                class:fn__none={tabs.jupyter[3]?.key !== focusTab}
-                data-type={tabs.jupyter[3]?.name}
-            >
-                <!-- 使用 Xterm 渲染输出内容 -->
-                <Item
-                    text={i18n.settings.jupyterSettings.outputTab.xterm.description}
-                    title={i18n.settings.jupyterSettings.outputTab.xterm.title}
-                >
-                    <Input
-                        slot="input"
-                        settingKey="output.parser.xterm"
-                        settingValue={config.jupyter.execute.output.parser.xterm}
-                        type={ItemType.checkbox}
-                        on:changed={async (e) => {
-                            config.jupyter.execute.output.parser.xterm = e.detail.value;
-                            await updated();
-                        }}
-                    />
-                </Item>
-
-                <!-- 转义标志符号 -->
-                <Item
-                    text={i18n.settings.jupyterSettings.outputTab.escaped.description}
-                    title={i18n.settings.jupyterSettings.outputTab.escaped.title}
-                >
-                    <Input
-                        slot="input"
-                        settingKey="output.parser.escaped"
-                        settingValue={config.jupyter.execute.output.parser.escaped}
-                        type={ItemType.checkbox}
-                        on:changed={async (e) => {
-                            config.jupyter.execute.output.parser.escaped = e.detail.value;
-                            await updated();
-                        }}
-                    />
-                </Item>
-
-                <!-- 解析控制字符 -->
-                <Item
-                    text={i18n.settings.jupyterSettings.outputTab.cntrl.description}
-                    title={i18n.settings.jupyterSettings.outputTab.cntrl.title}
-                >
-                    <Input
-                        slot="input"
-                        settingKey="output.parser.cntrl"
-                        settingValue={config.jupyter.execute.output.parser.cntrl}
-                        type={ItemType.checkbox}
-                        on:changed={async (e) => {
-                            config.jupyter.execute.output.parser.cntrl = e.detail.value;
-                            await updated();
-                        }}
-                    />
-                </Item>
-            </div>
-
-            <!-- 标签页 5 - 导入设置 -->
-            <div
-                class:fn__none={tabs.jupyter[4]?.key !== focusTab}
-                data-type={tabs.jupyter[4]?.name}
-            >
-                <!-- 使用 Xterm 渲染输出内容 -->
-                <Item
-                    text={i18n.settings.jupyterSettings.importTab.xterm.description}
-                    title={i18n.settings.jupyterSettings.importTab.xterm.title}
-                >
-                    <Input
-                        slot="input"
-                        settingKey="import.parser.xterm"
-                        settingValue={config.jupyter.import.parser.xterm}
-                        type={ItemType.checkbox}
-                        on:changed={async (e) => {
-                            config.jupyter.import.parser.xterm = e.detail.value;
-                            await updated();
-                        }}
-                    />
-                </Item>
-
-                <!-- 转义标志符号 -->
-                <Item
-                    text={i18n.settings.jupyterSettings.importTab.escaped.description}
-                    title={i18n.settings.jupyterSettings.importTab.escaped.title}
-                >
-                    <Input
-                        slot="input"
-                        settingKey="import.parser.escaped"
-                        settingValue={config.jupyter.import.parser.escaped}
-                        type={ItemType.checkbox}
-                        on:changed={async (e) => {
-                            config.jupyter.import.parser.escaped = e.detail.value;
-                            await updated();
-                        }}
-                    />
-                </Item>
-
-                <!-- 解析控制字符 -->
-                <Item
-                    text={i18n.settings.jupyterSettings.importTab.cntrl.description}
-                    title={i18n.settings.jupyterSettings.importTab.cntrl.title}
-                >
-                    <Input
-                        slot="input"
-                        settingKey="import.parser.cntrl"
-                        settingValue={config.jupyter.import.parser.cntrl}
-                        type={ItemType.checkbox}
-                        on:changed={async (e) => {
-                            config.jupyter.import.parser.cntrl = e.detail.value;
-                            await updated();
-                        }}
-                    />
-                </Item>
-            </div>
-        </Tabs>
-    </Panel>
-
-    <!-- xterm 设置面板 -->
-    <Panel display={panels[2]?.key === focusPanel}>
-        <!-- 字体设置 -->
-        <Item
-            text={i18n.settings.xtermSettings.fontFamily.description}
-            title={i18n.settings.xtermSettings.fontFamily.title}
-        >
-            <Input
-                slot="input"
-                placeholder="--b3-font-family-code"
-                settingKey="fontFamily"
-                settingValue={config.xterm.options.fontFamily}
-                type={ItemType.text}
-                on:changed={async (e) => {
-                    config.xterm.options.fontFamily = e.detail.value;
-                    await updated();
-                }}
-            />
-        </Item>
-    </Panel>
+                {/snippet}
+            </Item>
+        </Panel>
+    {/snippet}
 </Panels>
 
 <style lang="less">

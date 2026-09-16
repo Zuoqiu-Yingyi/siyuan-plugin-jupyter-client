@@ -26,16 +26,14 @@
 
     } from "@workspace/components/siyuan/tree/file";
     import FileTree from "@workspace/components/siyuan/tree/file/FileTree.svelte";
-    import Node from "@workspace/components/siyuan/tree/file/Node.svelte";
     import moment from "@workspace/utils/date/moment";
     import { utf32Decode } from "@workspace/utils/misc/string";
     import { washMenuItems } from "@workspace/utils/siyuan/menu/wash";
 
     import type { Kernel, KernelSpec, Session } from "@jupyterlab/services";
-    import type { ComponentEvents } from "svelte";
 
     import type { IBar } from "@workspace/components/siyuan/dock/index";
-    import type { IFileTreeFileNode, IFileTreeFolderNode, IFileTreeRootNode } from "@workspace/components/siyuan/tree/file";
+    import type { IFileTreeEvent, IFileTreeFileNode, IFileTreeFolderNode, IFileTreeRootNode } from "@workspace/components/siyuan/tree/file";
 
     import type JupyterClientPlugin from "@/index";
     import type { WorkerHandlers } from "@/workers/jupyter";
@@ -479,23 +477,23 @@
     });
 
     /* 折叠文件夹 */
-    function fold(e: ComponentEvents<Node>["fold"]) {
+    function fold(e: IFileTreeEvent["fold"]) {
         // plugin.logger.debug(e);
-        const node = e.detail.props;
+        const node = e.props;
         node.folded.set(true);
     }
 
     /* 展开文件夹 */
-    async function unfold(e: ComponentEvents<Node>["unfold"]) {
+    async function unfold(e: IFileTreeEvent["unfold"]) {
         // plugin.logger.debug(e);
-        const node = e.detail.props;
+        const node = e.props;
         node.folded.set(false);
     }
 
     /* 打开 */
-    function open(e: ComponentEvents<Node>["open"]) {
+    function open(e: IFileTreeEvent["open"]) {
         // plugin.logger.debug(e);
-        const node = e.detail.props;
+        const node = e.props;
         const name = get(node.name)!;
         const path = get(node.path)!;
         const depth = get(node.depth)!;
@@ -520,9 +518,9 @@
     }
 
     /* 菜单 */
-    async function menu(e: ComponentEvents<Node>["menu"]) {
+    async function menu(e: IFileTreeEvent["menu"]) {
         // plugin.logger.debug(e);
-        const node = e.detail.props;
+        const node = e.props;
         const name = get(node.name)!;
         const path = get(node.path)!;
         const depth = get(node.depth)!;
@@ -678,7 +676,7 @@
             const menu = new plugin.siyuan.Menu();
             items.forEach((item) => menu.addItem(item));
 
-            const event = e.detail.e;
+            const event = e.e;
             menu.open({
                 x: event.clientX,
                 y: event.clientY,
@@ -690,9 +688,9 @@
 
 <Bar {...bar} />
 <FileTree
+    onFold={fold}
+    onMenu={menu}
+    onOpen={open}
+    onUnfold={unfold}
     {roots}
-    on:open={open}
-    on:menu={menu}
-    on:fold={fold}
-    on:unfold={unfold}
 />
